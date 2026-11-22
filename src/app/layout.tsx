@@ -26,15 +26,15 @@ export const metadata: Metadata = {
     template: "%s | EQUIPORA",
   },
   description:
-    "EQUIPORA is a smarter equipment rental marketplace. Discover, compare, and rent quality equipment for your next project.",
-  applicationName: "EQUIPORA",
+    "EQUIPORA is a smart equipment rental marketplace. Find and rent quality equipment for construction, photography, agriculture, vehicles and more.",
   keywords: [
-    "Equipment Rental",
-    "Construction Equipment",
-    "Machinery Rental",
-    "Equipment Marketplace",
     "EQUIPORA",
+    "Equipment Rental",
+    "Equipment Marketplace",
+    "Construction Equipment",
+    "Tool Rental",
   ],
+  applicationName: "EQUIPORA",
 };
 
 export default function RootLayout({
@@ -49,12 +49,13 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <AuthProvider>
-          {/* Global navigation for all pages */}
+          {/* Global Header */}
           <SiteHeader />
 
-          {/* Page content */}
+          {/* Page Content */}
           <main className="flex-1">{children}</main>
 
+          {/* Global Toast Notifications */}
           <Toaster
             position="top-right"
             richColors

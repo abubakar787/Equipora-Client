@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -98,7 +99,7 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         image: image.trim() || undefined,
-        callbackURL: "/",
+        callbackURL: "/redirect",
       });
 
       if (error) {
@@ -108,7 +109,7 @@ export default function RegisterPage() {
 
       toast.success("Your EQUIPORA account has been created!");
 
-      router.replace("/");
+      router.replace("/redirect");
       router.refresh();
     } catch (error) {
       console.error("Registration error:", error);
@@ -127,7 +128,7 @@ export default function RegisterPage() {
 
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/",
+        callbackURL: "/redirect",
       });
 
       if (error) {
@@ -284,18 +285,12 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister} className="space-y-4">
               {/* Full Name */}
               <div>
-                <label
-                  htmlFor="name"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="name" className="mb-2 block text-sm font-semibold text-slate-700">
                   Full Name
                 </label>
 
                 <div className="relative">
-                  <UserRound
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
+                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     id="name"
                     type="text"
@@ -312,18 +307,12 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
                   Email Address
                 </label>
 
                 <div className="relative">
-                  <Mail
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     id="email"
                     type="email"
@@ -339,19 +328,13 @@ export default function RegisterPage() {
 
               {/* Profile Image URL */}
               <div>
-                <label
-                  htmlFor="image"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="image" className="mb-2 block text-sm font-semibold text-slate-700">
                   Profile Image URL{" "}
                   <span className="font-normal text-slate-400">(Optional)</span>
                 </label>
 
                 <div className="relative">
-                  <ImageIcon
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
+                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     id="image"
                     type="url"
@@ -365,18 +348,12 @@ export default function RegisterPage() {
 
               {/* Password */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
                   Password
                 </label>
 
                 <div className="relative">
-                  <LockKeyhole
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
+                  <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -415,46 +392,30 @@ export default function RegisterPage() {
 
               {/* Confirm Password */}
               <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-slate-700">
                   Confirm Password
                 </label>
 
                 <div className="relative">
-                  <LockKeyhole
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={18}
-                  />
+                  <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     autoComplete="new-password"
                     placeholder="Re-enter your password"
                     value={confirmPassword}
-                    onChange={(event) =>
-                      setConfirmPassword(event.target.value)
-                    }
+                    onChange={(event) => setConfirmPassword(event.target.value)}
                     required
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                   />
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
@@ -480,10 +441,7 @@ export default function RegisterPage() {
 
             <p className="mt-7 text-center text-sm text-slate-500">
               Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-bold text-emerald-600 transition hover:text-emerald-700"
-              >
+              <Link href="/login" className="font-bold text-emerald-600 transition hover:text-emerald-700">
                 Sign in
               </Link>
             </p>

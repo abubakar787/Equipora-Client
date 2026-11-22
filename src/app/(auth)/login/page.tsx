@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -37,11 +38,11 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
-    const { error } = await authClient.signIn.email({
-  email: email.trim(),
-  password,
-  callbackURL: "/redirect",
-});
+      const { error } = await authClient.signIn.email({
+        email: email.trim(),
+        password,
+        callbackURL: "/redirect",
+      });
 
       if (error) {
         toast.error(error.message || "Invalid email or password.");
@@ -50,7 +51,8 @@ export default function LoginPage() {
 
       toast.success("Login successful! Welcome to EQUIPORA.");
 
-      
+      router.replace("/redirect");
+      router.refresh();
     } catch (error) {
       console.error("Login error:", error);
 
@@ -66,10 +68,10 @@ export default function LoginPage() {
     try {
       setSocialLoading(provider);
 
-     const { error } = await authClient.signIn.social({
-  provider,
-  callbackURL: "/redirect",
-});
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: "/redirect",
+      });
 
       if (error) {
         toast.error(error.message || `${provider} login failed.`);
@@ -226,19 +228,14 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
+              {/* Email */}
               <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
                   Email Address
                 </label>
 
                 <div className="relative">
-                  <Mail
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={19}
-                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
                   <input
                     id="email"
                     type="email"
@@ -252,19 +249,14 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Password */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
+                <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
                   Password
                 </label>
 
                 <div className="relative">
-                  <LockKeyhole
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={19}
-                  />
+                  <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -308,10 +300,7 @@ export default function LoginPage() {
 
             <p className="mt-8 text-center text-sm text-slate-500">
               Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="font-bold text-emerald-600 transition hover:text-emerald-700"
-              >
+              <Link href="/register" className="font-bold text-emerald-600 transition hover:text-emerald-700">
                 Create an account
               </Link>
             </p>

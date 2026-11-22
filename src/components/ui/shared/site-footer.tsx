@@ -1,14 +1,9 @@
 
+import { ArrowRight, Mail, MapPin } from "lucide-react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Facebook,
-  Instagram,
-  Linkedin,
-  Mail,
-  MapPin,
-  Twitter,
-} from "lucide-react";
+import { IconBase } from "react-icons";
+
+ 
 
 const footerSections = [
   {
@@ -40,10 +35,10 @@ const footerSections = [
 ];
 
 const socialLinks = [
-  { label: "Facebook", icon: Facebook, href: "https://facebook.com" },
-  { label: "Instagram", icon: Instagram, href: "https://instagram.com" },
-  { label: "LinkedIn", icon: Linkedin, href: "https://linkedin.com" },
-  { label: "Twitter", icon: Twitter, href: "https://twitter.com" },
+  { label: "Facebook", icon: <span>f</span>, href: "https://facebook.com" },
+  { label: "Instagram", icon: <span>IG</span>, href: "https://instagram.com" },
+  { label: "LinkedIn", icon: <span>in</span>, href: "https://linkedin.com" },
+  { label: "Twitter", icon: <span>X</span>, href: "https://twitter.com" },
 ];
 
 export default function SiteFooter() {
@@ -116,7 +111,7 @@ export default function SiteFooter() {
                   aria-label={label}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-slate-400 transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
                 >
-                  <Icon className="h-4 w-4" />
+                  <IconBase className="h-4 w-4" />
                 </a>
               ))}
             </div>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -57,6 +56,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (name.trim().length < 2) {
+      toast.error("Name must contain at least 2 characters.");
+      return;
+    }
+
     if (password.length < 6) {
       toast.error("Password must contain at least 6 characters.");
       return;
@@ -94,7 +98,7 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         image: image.trim() || undefined,
-        callbackURL: "/auth/redirect",
+        callbackURL: "/",
       });
 
       if (error) {
@@ -103,10 +107,12 @@ export default function RegisterPage() {
       }
 
       toast.success("Your EQUIPORA account has been created!");
-      router.replace("/auth/redirect");
+
+      router.replace("/");
       router.refresh();
     } catch (error) {
       console.error("Registration error:", error);
+
       toast.error(
         error instanceof Error ? error.message : "Something went wrong."
       );
@@ -121,7 +127,7 @@ export default function RegisterPage() {
 
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/auth/redirect",
+        callbackURL: "/",
       });
 
       if (error) {
@@ -130,6 +136,7 @@ export default function RegisterPage() {
       }
     } catch (error) {
       console.error(`${provider} registration error:`, error);
+
       toast.error("Unable to continue with social registration.");
       setSocialLoading("");
     }
@@ -148,6 +155,7 @@ export default function RegisterPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white">
               <Wrench size={25} />
             </div>
+
             <div>
               <p className="text-2xl font-black tracking-[0.12em]">
                 EQUIPORA
@@ -379,6 +387,7 @@ export default function RegisterPage() {
                     required
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                   />
+
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -430,6 +439,7 @@ export default function RegisterPage() {
                     required
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                   />
+
                   <button
                     type="button"
                     onClick={() =>

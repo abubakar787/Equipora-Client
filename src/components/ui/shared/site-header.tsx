@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -20,6 +19,7 @@ import {
   LogOut,
   ChevronDown,
   LoaderCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -43,11 +43,14 @@ const socialLinks = [
 type UserRole = "customer" | "owner" | "admin";
 
 function getDashboardPath(role: string) {
-  switch (role) {
+  switch (role.toLowerCase()) {
     case "admin":
       return "/admin/dashboard";
+
     case "owner":
       return "/owner/dashboard";
+
+    case "customer":
     default:
       return "/dashboard";
   }
@@ -72,7 +75,7 @@ export default function SiteHeader() {
     | undefined;
 
   const isPending = session.isPending;
-  const role = user?.role || "customer";
+  const role = user?.role?.toLowerCase() || "customer";
   const dashboardPath = getDashboardPath(role);
 
   const displayName = user?.name || "EQUIPORA User";
@@ -98,6 +101,7 @@ export default function SiteHeader() {
       router.refresh();
     } catch (error) {
       console.error("Logout error:", error);
+
       toast.error("Something went wrong while signing out.");
     } finally {
       setIsSigningOut(false);
@@ -228,9 +232,11 @@ export default function SiteHeader() {
                         <p className="truncate text-sm font-bold text-[#101D2C]">
                           {displayName}
                         </p>
+
                         <p className="mt-1 truncate text-xs text-slate-500">
                           {user.email}
                         </p>
+
                         <span className="mt-2 inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                           {role}
                         </span>
@@ -354,7 +360,8 @@ export default function SiteHeader() {
                       </div>
                     </div>
 
-                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                      <ShieldCheck className="h-4 w-4" />
                       {role} Account
                     </p>
 

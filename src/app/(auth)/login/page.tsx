@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -41,7 +40,7 @@ export default function LoginPage() {
       const { error } = await authClient.signIn.email({
         email: email.trim(),
         password,
-       callbackURL: "/",
+        callbackURL: "/",
       });
 
       if (error) {
@@ -50,10 +49,12 @@ export default function LoginPage() {
       }
 
       toast.success("Login successful! Welcome to EQUIPORA.");
-router.replace("/");
-router.refresh();
+
+      router.replace("/");
+      router.refresh();
     } catch (error) {
       console.error("Login error:", error);
+
       toast.error(
         error instanceof Error ? error.message : "Something went wrong."
       );
@@ -66,10 +67,10 @@ router.refresh();
     try {
       setSocialLoading(provider);
 
-    const { error } = await authClient.signIn.social({
-  provider,
-  callbackURL: "/",
-});
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: "/",
+      });
 
       if (error) {
         toast.error(error.message || `${provider} login failed.`);
@@ -77,6 +78,7 @@ router.refresh();
       }
     } catch (error) {
       console.error(`${provider} login error:`, error);
+
       toast.error("Unable to continue with social login.");
       setSocialLoading("");
     }
@@ -95,6 +97,7 @@ router.refresh();
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white">
               <Wrench size={25} />
             </div>
+
             <div>
               <p className="text-2xl font-black tracking-[0.12em]">
                 EQUIPORA
@@ -144,7 +147,7 @@ router.refresh();
           </div>
 
           <p className="relative z-10 text-sm text-slate-500">
-          © 2026 EQUIPORA. All rights reserved.
+            © 2026 EQUIPORA. All rights reserved.
           </p>
         </section>
 
@@ -251,14 +254,12 @@ router.refresh();
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-semibold text-slate-700"
-                  >
-                    Password
-                  </label>
-                </div>
+                <label
+                  htmlFor="password"
+                  className="mb-2 block text-sm font-semibold text-slate-700"
+                >
+                  Password
+                </label>
 
                 <div className="relative">
                   <LockKeyhole
@@ -275,6 +276,7 @@ router.refresh();
                     required
                     className="h-13 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
                   />
+
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -306,7 +308,7 @@ router.refresh();
             </form>
 
             <p className="mt-8 text-center text-sm text-slate-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/register"
                 className="font-bold text-emerald-600 transition hover:text-emerald-700"

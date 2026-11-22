@@ -364,7 +364,7 @@ function FavoritesContent() {
                         </p>
                         <p className="mt-1 font-bold text-gray-900">
                           {typeof equipment.price === "number"
-                            ? `৳${equipment.price.toLocaleString()}`
+                            ? `$${equipment.price.toLocaleString()}`
                             : "Contact for price"}
                         </p>
                       </div>

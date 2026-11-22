@@ -144,7 +144,7 @@ export default function LoginPage() {
           </div>
 
           <p className="relative z-10 text-sm text-slate-500">
-            © {new Date().getFullYear()} EQUIPORA. All rights reserved.
+          © 2026 EQUIPORA. All rights reserved.
           </p>
         </section>
 

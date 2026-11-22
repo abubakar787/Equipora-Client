@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Globe,
   Camera,
@@ -14,7 +15,15 @@ import {
   X,
   Wrench,
   ArrowUpRight,
+  LayoutDashboard,
+  UserRound,
+  LogOut,
+  ChevronDown,
+  LoaderCircle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { authClient } from "@/lib/auth-client";
 
 const navigation = [
   { label: "Home", href: "/" },
@@ -31,8 +40,69 @@ const socialLinks = [
   { label: "YouTube", icon: CirclePlay, href: "#" },
 ];
 
+type UserRole = "customer" | "owner" | "admin";
+
+function getDashboardPath(role: string) {
+  switch (role) {
+    case "admin":
+      return "/admin/dashboard";
+    case "owner":
+      return "/owner/dashboard";
+    default:
+      return "/dashboard";
+  }
+}
+
 export default function SiteHeader() {
+  const router = useRouter();
+  const session = useAuth();
+
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const user = session.data?.user as
+    | {
+        id: string;
+        name?: string;
+        email?: string;
+        image?: string | null;
+        role?: UserRole;
+      }
+    | undefined;
+
+  const isPending = session.isPending;
+  const role = user?.role || "customer";
+  const dashboardPath = getDashboardPath(role);
+
+  const displayName = user?.name || "EQUIPORA User";
+  const userInitial = displayName.charAt(0).toUpperCase();
+
+  const handleLogout = async () => {
+    try {
+      setIsSigningOut(true);
+
+      const { error } = await authClient.signOut();
+
+      if (error) {
+        toast.error(error.message || "Unable to sign out.");
+        return;
+      }
+
+      setProfileOpen(false);
+      setMobileOpen(false);
+
+      toast.success("You have signed out successfully.");
+
+      router.replace("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Something went wrong while signing out.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -54,7 +124,6 @@ export default function SiteHeader() {
             </span>
           </div>
 
-          {/* Social Media */}
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => {
               const Icon = social.icon;
@@ -78,7 +147,6 @@ export default function SiteHeader() {
       {/* Main Navigation */}
       <div className="border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 lg:px-10">
-
           {/* Brand Logo */}
           <Link
             href="/"
@@ -113,22 +181,116 @@ export default function SiteHeader() {
             ))}
           </nav>
 
-          {/* Authentication Buttons */}
+          {/* Desktop Authentication */}
           <div className="hidden items-center gap-3 lg:flex">
-            <Link
-              href="/login"
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#101D2C] transition-colors hover:bg-slate-100"
-            >
-              Log In
-            </Link>
+            {isPending ? (
+              <LoaderCircle className="h-5 w-5 animate-spin text-emerald-600" />
+            ) : user ? (
+              <>
+                <Link
+                  href={dashboardPath}
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
 
-            <Link
-              href="/register"
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700"
-            >
-              Get Started
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
+                {/* Profile Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setProfileOpen((value) => !value)}
+                    className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 transition hover:border-emerald-400 hover:bg-slate-50"
+                    aria-expanded={profileOpen}
+                  >
+                    {user.image ? (
+                      <img
+                        src={user.image}
+                        alt={displayName}
+                        className="h-9 w-9 rounded-full border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
+                        {userInitial}
+                      </span>
+                    )}
+
+                    <span className="max-w-[110px] truncate text-sm font-semibold text-[#101D2C]">
+                      {displayName}
+                    </span>
+
+                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-3 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      <div className="border-b border-slate-100 px-4 py-4">
+                        <p className="truncate text-sm font-bold text-[#101D2C]">
+                          {displayName}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {user.email}
+                        </p>
+                        <span className="mt-2 inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                          {role}
+                        </span>
+                      </div>
+
+                      <div className="p-2">
+                        <Link
+                          href="/profile"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <UserRound className="h-4 w-4" />
+                          My Profile
+                        </Link>
+
+                        <Link
+                          href={dashboardPath}
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          Dashboard
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          disabled={isSigningOut}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                        >
+                          {isSigningOut ? (
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <LogOut className="h-4 w-4" />
+                          )}
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#101D2C] transition-colors hover:bg-slate-100"
+                >
+                  Log In
+                </Link>
+
+                <Link
+                  href="/register"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700"
+                >
+                  Get Started
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -162,23 +324,91 @@ export default function SiteHeader() {
                 </Link>
               ))}
 
-              {/* Mobile Auth Buttons */}
-              <div className="flex gap-3 border-t border-slate-100 pt-4">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-[#101D2C]"
-                >
-                  Log In
-                </Link>
+              <div className="border-t border-slate-100 pt-4">
+                {isPending ? (
+                  <div className="flex justify-center py-3">
+                    <LoaderCircle className="h-5 w-5 animate-spin text-emerald-600" />
+                  </div>
+                ) : user ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      {user.image ? (
+                        <img
+                          src={user.image}
+                          alt={displayName}
+                          className="h-11 w-11 rounded-full border border-slate-200 object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
+                          {userInitial}
+                        </span>
+                      )}
 
-                <Link
-                  href="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 rounded-xl bg-emerald-600 py-3 text-center text-sm font-bold text-white"
-                >
-                  Get Started
-                </Link>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-[#101D2C]">
+                          {displayName}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                      {role} Account
+                    </p>
+
+                    <Link
+                      href={dashboardPath}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-[#101D2C]"
+                    >
+                      <UserRound className="h-4 w-4" />
+                      My Profile
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={isSigningOut}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-100 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                    >
+                      {isSigningOut ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <LogOut className="h-4 w-4" />
+                      )}
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-[#101D2C]"
+                    >
+                      Log In
+                    </Link>
+
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 rounded-xl bg-emerald-600 py-3 text-center text-sm font-bold text-white"
+                    >
+                      Get Started
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Mobile Contact Information */}

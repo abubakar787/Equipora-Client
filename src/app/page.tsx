@@ -1376,7 +1376,7 @@ export default function Home() {
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-7xl flex-col justify-between gap-3 px-5 py-6 text-xs text-slate-500 sm:px-8 md:flex-row lg:px-10">
             <p>
-              © {new Date().getFullYear()} EQUIPORA. All rights reserved.
+             © 2026 EQUIPORA. All rights reserved.
             </p>
 
             <p>Rent Smarter. Build Better.</p>

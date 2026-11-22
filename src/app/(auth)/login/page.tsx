@@ -41,7 +41,7 @@ export default function LoginPage() {
       const { error } = await authClient.signIn.email({
         email: email.trim(),
         password,
-        callbackURL: "/redirect",
+        callbackURL: `${window.location.origin}/redirect`,
       });
 
       if (error) {
@@ -70,7 +70,7 @@ export default function LoginPage() {
 
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/redirect",
+       callbackURL: `${window.location.origin}/redirect`,
       });
 
       if (error) {

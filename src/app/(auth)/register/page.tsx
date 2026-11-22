@@ -99,7 +99,7 @@ export default function RegisterPage() {
         email: email.trim(),
         password,
         image: image.trim() || undefined,
-        callbackURL: "/redirect",
+        callbackURL: `${window.location.origin}/redirect`,
       });
 
       if (error) {
@@ -128,7 +128,7 @@ export default function RegisterPage() {
 
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/redirect",
+        callbackURL: `${window.location.origin}/redirect`,
       });
 
       if (error) {

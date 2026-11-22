@@ -291,14 +291,14 @@ function ProfileContent() {
     <div className="absolute -right-10 -top-24 h-64 w-64 rounded-full border border-white/15" />
     <div className="absolute -right-2 -top-16 h-48 w-48 rounded-full border border-white/15" />
 
-    <div className="absolute bottom-5 left-7 text-white/90">
-      <p className="text-xs font-bold uppercase tracking-[0.2em]">
-        EQUIPORA
-      </p>
-      <p className="mt-1 text-sm text-white/75">
-        Your account. Your equipment journey.
-      </p>
-    </div>
+    <div className="absolute bottom-5 right-8 z-10 text-right text-white/90 sm:right-12">
+  <p className="text-sm font-bold uppercase tracking-[0.2em] sm:text-base">
+    EQUIPORA
+  </p>
+  <p className="mt-1 text-sm text-white/80 sm:text-base">
+    Your account. Your equipment journey.
+  </p>
+</div>
   </div>
 
   {/* PROFILE INFORMATION */}

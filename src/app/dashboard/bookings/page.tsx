@@ -120,18 +120,20 @@ function formatMoney(amount?: number) {
   }).format(amount || 0);
 }
 
+// FIXED: Explicitly normalize both possible API response shapes.
 function extractBookingResult(
   response: ApiResponse<BookingResult> | BookingResult
 ): BookingResult {
-  const result =
-    "data" in response && response.data
-      ? response.data
-      : response;
+  const wrappedResponse = response as ApiResponse<BookingResult>;
+
+  const result: BookingResult =
+    wrappedResponse.data &&
+    typeof wrappedResponse.data === "object"
+      ? wrappedResponse.data
+      : (response as BookingResult);
 
   return {
-    bookings: Array.isArray(result.bookings)
-      ? result.bookings
-      : [],
+    bookings: Array.isArray(result.bookings) ? result.bookings : [],
     pagination: {
       total: result.pagination?.total ?? 0,
       page: result.pagination?.page ?? 1,
@@ -163,7 +165,8 @@ function MyBookingsContent() {
 
     if (error || !data?.token) {
       throw new Error(
-        error?.message || "Authentication token not found. Please sign in again."
+        error?.message ||
+          "Authentication token not found. Please sign in again."
       );
     }
 
@@ -242,9 +245,7 @@ function MyBookingsContent() {
     const paymentStatus = booking.paymentStatus?.toLowerCase();
 
     if (paymentStatus === "paid") {
-      toast.error(
-        "Paid bookings cannot be cancelled through this action."
-      );
+      toast.error("Paid bookings cannot be cancelled through this action.");
       return;
     }
 
@@ -289,7 +290,6 @@ function MyBookingsContent() {
 
   return (
     <main className="min-h-screen bg-[#F6F8FB]">
-      {/* PAGE HEADER */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <div>
@@ -320,7 +320,6 @@ function MyBookingsContent() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
-        {/* TOTAL BOOKINGS */}
         <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -339,14 +338,10 @@ function MyBookingsContent() {
           </div>
         </section>
 
-        {/* FILTERS */}
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="font-bold text-slate-800">
-                Booking History
-              </h2>
-
+              <h2 className="font-bold text-slate-800">Booking History</h2>
               <p className="mt-1 text-xs text-slate-400">
                 Filter your reservations by status.
               </p>
@@ -383,7 +378,6 @@ function MyBookingsContent() {
             ))}
           </div>
 
-          {/* SEARCH */}
           <div className="relative mt-5 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -397,12 +391,9 @@ function MyBookingsContent() {
           </div>
         </section>
 
-        {/* ERROR */}
         {error && (
           <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-medium text-red-700">
-              {error}
-            </p>
+            <p className="text-sm font-medium text-red-700">{error}</p>
 
             <button
               type="button"
@@ -414,7 +405,6 @@ function MyBookingsContent() {
           </div>
         )}
 
-        {/* BOOKING LIST */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {loading ? (
             <div className="flex items-center justify-center gap-3 py-20 text-sm font-medium text-slate-500">
@@ -428,9 +418,7 @@ function MyBookingsContent() {
               </div>
 
               <h3 className="mt-5 text-lg font-bold text-slate-800">
-                {search
-                  ? "No matching bookings"
-                  : "No bookings found"}
+                {search ? "No matching bookings" : "No bookings found"}
               </h3>
 
               <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
@@ -452,8 +440,7 @@ function MyBookingsContent() {
             <div className="divide-y divide-slate-100">
               {visibleBookings.map((booking) => {
                 const status = booking.status;
-                const paymentStatus =
-                  booking.paymentStatus?.toLowerCase();
+                const paymentStatus = booking.paymentStatus?.toLowerCase();
 
                 const canCancel =
                   paymentStatus !== "paid" &&
@@ -475,9 +462,7 @@ function MyBookingsContent() {
                           {booking.equipmentImage ? (
                             <img
                               src={booking.equipmentImage}
-                              alt={
-                                booking.equipmentTitle || "Equipment"
-                              }
+                              alt={booking.equipmentTitle || "Equipment"}
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -487,8 +472,7 @@ function MyBookingsContent() {
 
                         <div className="min-w-0">
                           <h3 className="truncate font-bold text-slate-800">
-                            {booking.equipmentTitle ||
-                              "Equipment Rental"}
+                            {booking.equipmentTitle || "Equipment Rental"}
                           </h3>
 
                           <p className="mt-1 break-all text-xs text-slate-400">
@@ -508,8 +492,7 @@ function MyBookingsContent() {
                           </div>
 
                           <p className="mt-2 text-xs text-slate-400">
-                            Quantity: {booking.quantity} ·{" "}
-                            {booking.rentalType}
+                            Quantity: {booking.quantity} · {booking.rentalType}
                           </p>
                         </div>
                       </div>
@@ -551,7 +534,6 @@ function MyBookingsContent() {
                               ) : (
                                 <XCircle className="h-3.5 w-3.5" />
                               )}
-
                               Cancel Booking
                             </button>
                           )}
@@ -565,7 +547,6 @@ function MyBookingsContent() {
           )}
         </section>
 
-        {/* PAGINATION */}
         {!loading && !error && totalBookings > 0 && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-slate-500">
@@ -597,7 +578,6 @@ function MyBookingsContent() {
         )}
       </div>
 
-      {/* FOOTER */}
       <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
         Copyright {new Date().getFullYear()} EQUIPORA. Rent Smarter. Build Better.
       </footer>

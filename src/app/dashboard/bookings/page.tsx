@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 
 import ProtectedRoute from "@/components/providers/protected-route";
+import { useAuth } from "@/components/providers/auth-provider";
+import { authClient } from "@/lib/auth-client";
 import { apiRequest } from "@/lib/api";
 
 type BookingStatus =
@@ -44,16 +46,18 @@ interface Booking {
   createdAt: string;
 }
 
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 interface BookingResult {
   bookings: Booking[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
+  pagination: Pagination;
 }
 
 interface ApiResponse<T> {
@@ -94,7 +98,7 @@ const statusLabels: Record<string, string> = {
   expired: "Expired",
 };
 
-function formatDate(value: string) {
+function formatDate(value?: string) {
   if (!value) return "N/A";
 
   const date = new Date(value);
@@ -108,7 +112,7 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function formatMoney(amount: number) {
+function formatMoney(amount?: number) {
   return new Intl.NumberFormat("en-BD", {
     style: "currency",
     currency: "BDT",
@@ -116,22 +120,62 @@ function formatMoney(amount: number) {
   }).format(amount || 0);
 }
 
+function extractBookingResult(
+  response: ApiResponse<BookingResult> | BookingResult
+): BookingResult {
+  const result =
+    "data" in response && response.data
+      ? response.data
+      : response;
+
+  return {
+    bookings: Array.isArray(result.bookings)
+      ? result.bookings
+      : [],
+    pagination: {
+      total: result.pagination?.total ?? 0,
+      page: result.pagination?.page ?? 1,
+      limit: result.pagination?.limit ?? 10,
+      totalPages: result.pagination?.totalPages ?? 1,
+      hasNextPage: result.pagination?.hasNextPage ?? false,
+      hasPrevPage: result.pagination?.hasPrevPage ?? false,
+    },
+  };
+}
+
 function MyBookingsContent() {
+  const session = useAuth();
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [search, setSearch] = useState("");
+
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBookings, setTotalBookings] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+  const getToken = async () => {
+    const { data, error } = await authClient.token();
+
+    if (error || !data?.token) {
+      throw new Error(
+        error?.message || "Authentication token not found. Please sign in again."
+      );
+    }
+
+    return data.token;
+  };
+
   const loadBookings = useCallback(async () => {
-    setLoading(true);
     setError("");
 
     try {
+      const token = await getToken();
+
       const params = new URLSearchParams({
         page: String(page),
         limit: "10",
@@ -141,39 +185,66 @@ function MyBookingsContent() {
         params.set("status", selectedStatus);
       }
 
-      const response = await apiRequest<ApiResponse<BookingResult>>(
-        `/api/bookings/my-bookings?${params.toString()}`
-      );
+      const response = await apiRequest<
+        ApiResponse<BookingResult> | BookingResult
+      >(`/api/bookings/my-bookings?${params.toString()}`, {
+        method: "GET",
+        token,
+      });
 
-      setBookings(response.data.bookings || []);
-      setTotalPages(response.data.pagination.totalPages || 1);
-      setTotalBookings(response.data.pagination.total || 0);
+      const result = extractBookingResult(response);
+
+      setBookings(result.bookings);
+      setTotalPages(Math.max(1, result.pagination.totalPages));
+      setTotalBookings(result.pagination.total);
     } catch (err) {
+      console.error("Booking loading error:", err);
+
       const message =
         err instanceof Error
           ? err.message
           : "Unable to load your bookings.";
 
       setError(message);
+      setBookings([]);
+      setTotalPages(1);
+      setTotalBookings(0);
     } finally {
       setLoading(false);
     }
   }, [page, selectedStatus]);
 
   useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
+    if (session.isPending || !session.data?.user) return;
+
+    void loadBookings();
+  }, [session.isPending, session.data?.user?.id, loadBookings]);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    void loadBookings();
+  };
 
   const handleFilterChange = (value: string) => {
+    setLoading(true);
     setSelectedStatus(value);
     setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+
+    setLoading(true);
+    setPage(newPage);
   };
 
   const handleCancel = async (booking: Booking) => {
     const paymentStatus = booking.paymentStatus?.toLowerCase();
 
     if (paymentStatus === "paid") {
-      toast.error("Paid bookings cannot be cancelled through this action.");
+      toast.error(
+        "Paid bookings cannot be cancelled through this action."
+      );
       return;
     }
 
@@ -186,13 +257,20 @@ function MyBookingsContent() {
     try {
       setCancellingId(booking._id);
 
+      const token = await getToken();
+
       await apiRequest(`/api/bookings/${booking._id}/cancel`, {
         method: "PATCH",
+        token,
       });
 
       toast.success("Booking cancelled successfully.");
+
+      setLoading(true);
       await loadBookings();
     } catch (err) {
+      console.error("Booking cancellation error:", err);
+
       toast.error(
         err instanceof Error
           ? err.message
@@ -211,6 +289,7 @@ function MyBookingsContent() {
 
   return (
     <main className="min-h-screen bg-[#F6F8FB]">
+      {/* PAGE HEADER */}
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
           <div>
@@ -241,6 +320,7 @@ function MyBookingsContent() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
+        {/* TOTAL BOOKINGS */}
         <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -251,6 +331,7 @@ function MyBookingsContent() {
               <p className="text-xs font-medium text-slate-400">
                 Total Reservations
               </p>
+
               <p className="text-2xl font-extrabold text-slate-800">
                 {loading ? "..." : totalBookings}
               </p>
@@ -258,12 +339,14 @@ function MyBookingsContent() {
           </div>
         </section>
 
+        {/* FILTERS */}
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-bold text-slate-800">
                 Booking History
               </h2>
+
               <p className="mt-1 text-xs text-slate-400">
                 Filter your reservations by status.
               </p>
@@ -271,7 +354,7 @@ function MyBookingsContent() {
 
             <button
               type="button"
-              onClick={loadBookings}
+              onClick={handleRefresh}
               disabled={loading}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
             >
@@ -288,7 +371,8 @@ function MyBookingsContent() {
                 key={filter.value}
                 type="button"
                 onClick={() => handleFilterChange(filter.value)}
-                className={`rounded-lg px-3.5 py-2 text-xs font-bold transition ${
+                disabled={loading}
+                className={`rounded-lg px-3.5 py-2 text-xs font-bold transition disabled:opacity-60 ${
                   selectedStatus === filter.value
                     ? "bg-emerald-600 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -299,6 +383,7 @@ function MyBookingsContent() {
             ))}
           </div>
 
+          {/* SEARCH */}
           <div className="relative mt-5 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -312,13 +397,16 @@ function MyBookingsContent() {
           </div>
         </section>
 
+        {/* ERROR */}
         {error && (
           <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-medium text-red-700">{error}</p>
+            <p className="text-sm font-medium text-red-700">
+              {error}
+            </p>
 
             <button
               type="button"
-              onClick={loadBookings}
+              onClick={handleRefresh}
               className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700"
             >
               Retry
@@ -326,6 +414,7 @@ function MyBookingsContent() {
           </div>
         )}
 
+        {/* BOOKING LIST */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {loading ? (
             <div className="flex items-center justify-center gap-3 py-20 text-sm font-medium text-slate-500">
@@ -339,7 +428,9 @@ function MyBookingsContent() {
               </div>
 
               <h3 className="mt-5 text-lg font-bold text-slate-800">
-                {search ? "No matching bookings" : "No bookings found"}
+                {search
+                  ? "No matching bookings"
+                  : "No bookings found"}
               </h3>
 
               <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
@@ -361,13 +452,17 @@ function MyBookingsContent() {
             <div className="divide-y divide-slate-100">
               {visibleBookings.map((booking) => {
                 const status = booking.status;
-                const paymentStatus = booking.paymentStatus?.toLowerCase();
+                const paymentStatus =
+                  booking.paymentStatus?.toLowerCase();
 
                 const canCancel =
                   paymentStatus !== "paid" &&
-                  !["completed", "cancelled", "rejected", "expired"].includes(
-                    status
-                  );
+                  ![
+                    "completed",
+                    "cancelled",
+                    "rejected",
+                    "expired",
+                  ].includes(status);
 
                 return (
                   <article
@@ -380,7 +475,9 @@ function MyBookingsContent() {
                           {booking.equipmentImage ? (
                             <img
                               src={booking.equipmentImage}
-                              alt={booking.equipmentTitle || "Equipment"}
+                              alt={
+                                booking.equipmentTitle || "Equipment"
+                              }
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -390,10 +487,11 @@ function MyBookingsContent() {
 
                         <div className="min-w-0">
                           <h3 className="truncate font-bold text-slate-800">
-                            {booking.equipmentTitle || "Equipment Rental"}
+                            {booking.equipmentTitle ||
+                              "Equipment Rental"}
                           </h3>
 
-                          <p className="mt-1 text-xs text-slate-400">
+                          <p className="mt-1 break-all text-xs text-slate-400">
                             Booking ID: {booking._id}
                           </p>
 
@@ -410,7 +508,8 @@ function MyBookingsContent() {
                           </div>
 
                           <p className="mt-2 text-xs text-slate-400">
-                            Quantity: {booking.quantity} · {booking.rentalType}
+                            Quantity: {booking.quantity} ·{" "}
+                            {booking.rentalType}
                           </p>
                         </div>
                       </div>
@@ -420,9 +519,11 @@ function MyBookingsContent() {
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                             Total Amount
                           </p>
+
                           <p className="mt-1 text-lg font-extrabold text-slate-800">
                             {formatMoney(booking.totalAmount)}
                           </p>
+
                           <p className="mt-1 text-xs capitalize text-slate-400">
                             Payment: {booking.paymentStatus || "Unknown"}
                           </p>
@@ -450,6 +551,7 @@ function MyBookingsContent() {
                               ) : (
                                 <XCircle className="h-3.5 w-3.5" />
                               )}
+
                               Cancel Booking
                             </button>
                           )}
@@ -463,6 +565,7 @@ function MyBookingsContent() {
           )}
         </section>
 
+        {/* PAGINATION */}
         {!loading && !error && totalBookings > 0 && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-slate-500">
@@ -473,7 +576,7 @@ function MyBookingsContent() {
               <button
                 type="button"
                 disabled={page <= 1}
-                onClick={() => setPage((current) => current - 1)}
+                onClick={() => handlePageChange(page - 1)}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -483,7 +586,7 @@ function MyBookingsContent() {
               <button
                 type="button"
                 disabled={page >= totalPages}
-                onClick={() => setPage((current) => current + 1)}
+                onClick={() => handlePageChange(page + 1)}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
@@ -494,6 +597,7 @@ function MyBookingsContent() {
         )}
       </div>
 
+      {/* FOOTER */}
       <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
         Copyright {new Date().getFullYear()} EQUIPORA. Rent Smarter. Build Better.
       </footer>

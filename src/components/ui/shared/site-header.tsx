@@ -244,7 +244,7 @@ export default function SiteHeader() {
 
                       <div className="p-2">
                         <Link
-                          href="/profile"
+                          href="/dashboard/profile"
                           onClick={() => setProfileOpen(false)}
                           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
                         >

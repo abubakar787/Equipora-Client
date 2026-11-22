@@ -555,9 +555,9 @@ function ProfileContent() {
   );
 }
 
-export default function CustomerProfilePage() {
+export default function ProfilePage() {
   return (
-    <ProtectedRoute allowedRoles={["customer"]}>
+    <ProtectedRoute allowedRoles={["customer", "owner", "admin"]}>
       <div className="min-h-screen bg-[#F7F9FC] p-5 sm:p-8">
         <ProfileContent />
       </div>

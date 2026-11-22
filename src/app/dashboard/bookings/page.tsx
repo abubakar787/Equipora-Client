@@ -142,8 +142,7 @@ function MyBookingsContent() {
       }
 
       const response = await apiRequest<ApiResponse<BookingResult>>(
-        `/api/bookings/my-bookings?${params.toString()}`,
-        { auth: true }
+        `/api/bookings/my-bookings?${params.toString()}`
       );
 
       setBookings(response.data.bookings || []);
@@ -189,7 +188,6 @@ function MyBookingsContent() {
 
       await apiRequest(`/api/bookings/${booking._id}/cancel`, {
         method: "PATCH",
-        auth: true,
       });
 
       toast.success("Booking cancelled successfully.");
@@ -243,7 +241,6 @@ function MyBookingsContent() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
-        {/* SUMMARY */}
         <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -261,7 +258,6 @@ function MyBookingsContent() {
           </div>
         </section>
 
-        {/* FILTERS */}
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -316,7 +312,6 @@ function MyBookingsContent() {
           </div>
         </section>
 
-        {/* ERROR */}
         {error && (
           <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-red-700">{error}</p>
@@ -331,7 +326,6 @@ function MyBookingsContent() {
           </div>
         )}
 
-        {/* BOOKING LIST */}
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {loading ? (
             <div className="flex items-center justify-center gap-3 py-20 text-sm font-medium text-slate-500">
@@ -416,8 +410,7 @@ function MyBookingsContent() {
                           </div>
 
                           <p className="mt-2 text-xs text-slate-400">
-                            Quantity: {booking.quantity} ·{" "}
-                            {booking.rentalType}
+                            Quantity: {booking.quantity} · {booking.rentalType}
                           </p>
                         </div>
                       </div>
@@ -470,7 +463,6 @@ function MyBookingsContent() {
           )}
         </section>
 
-        {/* PAGINATION */}
         {!loading && !error && totalBookings > 0 && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-slate-500">

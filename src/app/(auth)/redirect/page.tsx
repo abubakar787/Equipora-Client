@@ -43,6 +43,8 @@ export default function AuthRedirectPage() {
     }
   }, [data, isPending, router]);
 
+
+  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F7F9FC]">
       <LoaderCircle className="h-10 w-10 animate-spin text-emerald-600" />

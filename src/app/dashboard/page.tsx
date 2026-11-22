@@ -11,6 +11,7 @@ export default function CustomerDashboardPage() {
           Welcome to your EQUIPORA account.
         </p>
       </main>
+      
     </ProtectedRoute>
   );
 }

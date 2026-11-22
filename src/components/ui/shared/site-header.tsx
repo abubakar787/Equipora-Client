@@ -374,14 +374,14 @@ export default function SiteHeader() {
                       Dashboard
                     </Link>
 
-                    <Link
-                      href="/profile"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-[#101D2C]"
-                    >
-                      <UserRound className="h-4 w-4" />
-                      My Profile
-                    </Link>
+                   <Link
+  href="/dashboard/profile"
+  onClick={() => setProfileOpen(false)}
+  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+>
+  <UserRound className="h-4 w-4" />
+  My Profile
+</Link>
 
                     <button
                       type="button"

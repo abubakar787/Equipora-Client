@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from "react";
@@ -22,9 +21,7 @@ export default function AuthRedirectPage() {
       role?: string;
     };
 
-    const role = user.role?.toLowerCase();
-
-    switch (role) {
+    switch (user.role?.toLowerCase()) {
       case "admin":
         router.replace("/admin/dashboard");
         break;
@@ -39,20 +36,15 @@ export default function AuthRedirectPage() {
 
       default:
         router.replace("/");
-        break;
     }
   }, [data, isPending, router]);
 
-
-  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F7F9FC]">
       <LoaderCircle className="h-10 w-10 animate-spin text-emerald-600" />
-
       <h1 className="text-xl font-bold text-[#101D2C]">
         Preparing your dashboard
       </h1>
-
       <p className="text-sm text-slate-500">
         Verifying your account and permissions...
       </p>

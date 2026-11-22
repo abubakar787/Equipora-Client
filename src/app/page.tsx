@@ -9,8 +9,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Search,
-  Menu,
-  X,
   MapPin,
   Clock3,
   ShieldCheck,
@@ -384,7 +382,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
 
   // ------------------------------------------
@@ -472,142 +469,12 @@ export default function Home() {
     void fetchEquipment(search);
   };
 
-  const closeMenu = () => setMobileMenuOpen(false);
-
   // ==========================================
   // RENDER
   // ==========================================
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#F7F9FC]">
-
-      {/* ======================================
-          NAVBAR
-      ====================================== */}
-
-      <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
-
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#101D2C] text-emerald-400">
-              <Wrench className="h-5 w-5" />
-            </div>
-
-            <div>
-              <span className="block text-xl font-black tracking-[0.08em] text-[#101D2C]">
-                EQUIP<span className="text-emerald-600">ORA</span>
-              </span>
-
-              <span className="block text-[9px] font-semibold tracking-[0.22em] text-slate-500">
-                RENT SMARTER. BUILD BETTER.
-              </span>
-            </div>
-          </Link>
-
-          <nav className="hidden items-center gap-8 lg:flex">
-            <Link href="/" className="text-sm font-semibold text-emerald-700">
-              Home
-            </Link>
-
-            <Link
-              href="/equipment"
-              className="text-sm font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Equipment
-            </Link>
-
-            <a
-              href="#categories"
-              className="text-sm font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              Categories
-            </a>
-
-            <a
-              href="#how-it-works"
-              className="text-sm font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              How it works
-            </a>
-
-            <a
-              href="#about"
-              className="text-sm font-medium text-slate-600 transition hover:text-emerald-700"
-            >
-              About
-            </a>
-          </nav>
-
-          <div className="hidden items-center gap-3 lg:flex">
-            <Link
-              href="/login"
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#101D2C] transition hover:bg-slate-100"
-            >
-              Log in
-            </Link>
-
-            <Link
-              href="/register"
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700"
-            >
-              Get Started <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-[#101D2C] lg:hidden"
-            aria-label="Toggle navigation"
-          >
-            {mobileMenuOpen ? <X /> : <Menu />}
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="border-t border-slate-200 bg-white px-5 py-5 shadow-xl lg:hidden">
-            <nav className="flex flex-col gap-4">
-              <Link href="/" onClick={closeMenu} className="font-semibold">
-                Home
-              </Link>
-
-              <Link href="/equipment" onClick={closeMenu}>
-                Equipment
-              </Link>
-
-              <a href="#categories" onClick={closeMenu}>
-                Categories
-              </a>
-
-              <a href="#how-it-works" onClick={closeMenu}>
-                How it works
-              </a>
-
-              <a href="#about" onClick={closeMenu}>
-                About
-              </a>
-
-              <div className="flex gap-3 border-t border-slate-100 pt-4">
-                <Link
-                  href="/login"
-                  onClick={closeMenu}
-                  className="flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold"
-                >
-                  Log in
-                </Link>
-
-                <Link
-                  href="/register"
-                  onClick={closeMenu}
-                  className="flex-1 rounded-xl bg-emerald-600 py-3 text-center text-sm font-bold text-white"
-                >
-                  Get Started
-                </Link>
-              </div>
-            </nav>
-          </div>
-        )}
-      </header>
 
       {/* ======================================
           HERO SECTION

@@ -1,8 +1,11 @@
 
+import { authClient } from "@/lib/auth-client";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 type ApiOptions = RequestInit & {
   token?: string;
+  auth?: boolean;
 };
 
 export async function apiRequest<T>(
@@ -13,10 +16,16 @@ export async function apiRequest<T>(
     throw new Error("NEXT_PUBLIC_API_URL is not configured.");
   }
 
-  const { token, headers, ...requestOptions } = options;
+  const {
+    token,
+    auth = false,
+    headers,
+    ...requestOptions
+  } = options;
 
   const requestHeaders = new Headers(headers);
 
+  // Automatically set JSON content type
   if (
     requestOptions.body &&
     !(requestOptions.body instanceof FormData) &&
@@ -25,8 +34,27 @@ export async function apiRequest<T>(
     requestHeaders.set("Content-Type", "application/json");
   }
 
-  if (token) {
-    requestHeaders.set("Authorization", `Bearer ${token}`);
+  // Get Better Auth JWT for protected API requests
+  let accessToken = token;
+
+  if (auth && !accessToken) {
+    const { data, error } = await authClient.token();
+
+    if (error || !data?.token) {
+      throw new Error(
+        error?.message || "Authentication required. Please login again."
+      );
+    }
+
+    accessToken = data.token;
+  }
+
+  // Attach Bearer token
+  if (accessToken) {
+    requestHeaders.set(
+      "Authorization",
+      `Bearer ${accessToken}`
+    );
   }
 
   const response = await fetch(
@@ -38,12 +66,14 @@ export async function apiRequest<T>(
     }
   );
 
+  // Parse API response
   const contentType = response.headers.get("content-type");
 
   const result = contentType?.includes("application/json")
     ? await response.json()
     : await response.text();
 
+  // Handle API errors
   if (!response.ok) {
     const message =
       typeof result === "object" && result !== null

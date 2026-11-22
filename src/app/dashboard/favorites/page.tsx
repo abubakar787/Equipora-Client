@@ -3,184 +3,163 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  ArrowLeft,
   Heart,
   MapPin,
   Package,
   RefreshCw,
+  Search,
   Trash2,
-  CalendarDays,
+  ArrowRight,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
-  Search,
 } from "lucide-react";
-import { toast } from "sonner";
-
-import ProtectedRoute from "@/components/providers/protected-route";
-import { useAuth } from "@/components/providers/auth-provider";
 import { authClient } from "@/lib/auth-client";
-import { apiRequest } from "@/lib/api";
+import ProtectedRoute from "@/components/providers/protected-route";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface Equipment {
   _id: string;
   title: string;
-  description: string;
+  description?: string;
   categoryName?: string;
   location?: string;
-  price: number;
+  price?: number;
   rentalType?: string;
   images?: string[];
-  status?: string;
-  isAvailable?: boolean;
 }
 
 interface Favorite {
   _id: string;
-  createdAt: string;
-  equipment: Equipment;
+  equipmentId?: string;
+  equipment?: Equipment | null;
+  createdAt?: string;
 }
 
-interface FavoriteResult {
-  data: Favorite[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+interface Pagination {
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-function formatMoney(amount?: number) {
-  return new Intl.NumberFormat("en-BD", {
-    style: "currency",
-    currency: "BDT",
-    maximumFractionDigits: 0,
-  }).format(amount || 0);
-}
-
-function MyFavoritesContent() {
-  const session = useAuth();
-
+function FavoritesContent() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [removingId, setRemovingId] = useState<string | null>(null);
-
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalFavorites, setTotalFavorites] = useState(0);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const getToken = async () => {
-    const { data, error } = await authClient.token();
-
-    if (error || !data?.token) {
-      throw new Error(
-        error?.message || "Authentication token not found. Please sign in again."
-      );
-    }
-
-    return data.token;
+    const tokenResponse = await authClient.token();
+    return tokenResponse.data?.token;
   };
 
   const loadFavorites = useCallback(async () => {
-    setError("");
-
     try {
+      setError("");
+
       const token = await getToken();
 
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: "12",
-      });
+      if (!token) {
+        throw new Error("Authentication token not found. Please login again.");
+      }
 
-      const response = await apiRequest<
-        ApiResponse<FavoriteResult> | FavoriteResult
-      >(`/api/favorites?${params.toString()}`, {
-        method: "GET",
-        token,
-      });
-
-      const result =
-        "data" in response && response.data
-          ? response.data
-          : response;
-
-      setFavorites(Array.isArray(result.data) ? result.data : []);
-      setTotalFavorites(result.pagination?.total ?? 0);
-      setTotalPages(Math.max(1, result.pagination?.totalPages ?? 1));
-    } catch (err) {
-      console.error("Favorites loading error:", err);
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load your favorites."
+      const response = await fetch(
+        `${API_URL}/api/favorites?page=${page}&limit=12`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        }
       );
-      setFavorites([]);
-      setTotalFavorites(0);
-      setTotalPages(1);
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to load favorites.");
+      }
+
+      const data = result.data;
+
+      const items = Array.isArray(data)
+        ? data
+        : data?.favorites || data?.items || data?.results || [];
+
+      setFavorites(items);
+
+      const paginationData = result.pagination || data?.pagination || {};
+
+      setPagination({
+        page: paginationData.page || page,
+        totalPages: paginationData.totalPages || 1,
+        total: paginationData.total ?? items.length,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }
   }, [page]);
 
   useEffect(() => {
-    if (session.isPending || !session.data?.user) return;
-
     void loadFavorites();
-  }, [session.isPending, session.data?.user?.id, loadFavorites]);
+  }, [loadFavorites]);
 
-  const handleRefresh = () => {
-    setLoading(true);
-    void loadFavorites();
-  };
-
-  const handleRemove = async (equipmentId: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to remove this equipment from your favorites?"
-    );
-
-    if (!confirmed) return;
-
+  const removeFavorite = async (equipmentId: string) => {
     try {
       setRemovingId(equipmentId);
 
       const token = await getToken();
 
-      await apiRequest(`/api/favorites/${equipmentId}`, {
-        method: "DELETE",
-        token,
-      });
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
 
-      toast.success("Removed from your favorites.");
+      const response = await fetch(
+        `${API_URL}/api/favorites/${equipmentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      setFavorites((current) =>
-        current.filter(
-          (favorite) => favorite.equipment?._id !== equipmentId
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Could not remove favorite.");
+      }
+
+      setFavorites((previous) =>
+        previous.filter(
+          (favorite) =>
+            favorite.equipment?._id !== equipmentId &&
+            favorite.equipmentId !== equipmentId
         )
       );
 
-      setTotalFavorites((current) => Math.max(0, current - 1));
-
-      if (favorites.length === 1 && page > 1) {
-        setLoading(true);
-        setPage((current) => current - 1);
-      } else {
-        await loadFavorites();
-      }
+      setPagination((previous) => ({
+        ...previous,
+        total: Math.max(0, previous.total - 1),
+      }));
     } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : "Unable to remove favorite."
+      setError(
+        err instanceof Error ? err.message : "Could not remove favorite."
       );
     } finally {
       setRemovingId(null);
@@ -189,284 +168,257 @@ function MyFavoritesContent() {
 
   const filteredFavorites = favorites.filter((favorite) => {
     const equipment = favorite.equipment;
+    if (!equipment) return false;
 
-    const query = search.trim().toLowerCase();
+    const query = search.toLowerCase();
 
     return (
-      equipment?.title?.toLowerCase().includes(query) ||
-      equipment?.categoryName?.toLowerCase().includes(query) ||
-      equipment?.location?.toLowerCase().includes(query)
+      equipment.title?.toLowerCase().includes(query) ||
+      equipment.categoryName?.toLowerCase().includes(query) ||
+      equipment.location?.toLowerCase().includes(query)
     );
   });
 
   return (
-    <main className="min-h-screen bg-[#F6F8FB]">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl space-y-7 p-4 sm:p-8">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <Link
-              href="/dashboard"
-              className="mb-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-emerald-700"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Link>
+            <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
+              <Link href="/dashboard" className="hover:text-emerald-600">
+                Dashboard
+              </Link>
+              <span>/</span>
+              <span>My Favorites</span>
+            </div>
 
-            <h1 className="text-2xl font-extrabold tracking-tight text-[#172033]">
-              My Favorites
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-rose-100 p-3 text-rose-600">
+                <Heart size={25} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                  My Favorites
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Equipment you have saved for later
+                </p>
+              </div>
+            </div>
+          </div>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Your saved equipment, all in one place.
+          <button
+            onClick={() => {
+              setLoading(true);
+              void loadFavorites();
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-emerald-500"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Saved Equipment</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              {pagination.total}
             </p>
           </div>
 
-          <Link
-            href="/equipment"
-            className="hidden rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700 sm:inline-flex"
-          >
-            Explore Equipment
-          </Link>
+          <div className="rounded-2xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Current Page</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              {pagination.page} / {pagination.totalPages}
+            </p>
+          </div>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
-        <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50 text-rose-500">
-              <Heart className="h-5 w-5 fill-current" />
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-slate-400">
-                Saved Equipment
-              </p>
-              <p className="text-2xl font-extrabold text-slate-800">
-                {loading ? "..." : totalFavorites}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-bold text-slate-800">
-                Your Saved Equipment
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                Browse and manage your favorite equipment.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </button>
-          </div>
-
-          <div className="relative mt-5 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by equipment, category or location..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-            />
-          </div>
-        </section>
+        <div className="relative">
+          <Search
+            size={19}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search your favorite equipment..."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-12 pr-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+          />
+        </div>
 
         {error && (
-          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-medium text-red-700">{error}</p>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700"
-            >
-              Retry
-            </button>
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertCircle size={19} className="mt-0.5 shrink-0" />
+            <p>{error}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-24 text-sm font-medium text-slate-500">
-            <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
-            Loading your favorites...
-          </div>
-        ) : filteredFavorites.length === 0 && !error ? (
-          <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white px-6 py-20 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-400">
-              <Heart className="h-8 w-8" />
+          <div className="flex min-h-64 items-center justify-center">
+            <div className="text-center">
+              <RefreshCw
+                size={34}
+                className="mx-auto animate-spin text-emerald-600"
+              />
+              <p className="mt-3 text-sm text-gray-500">
+                Loading your favorites...
+              </p>
             </div>
-
-            <h3 className="mt-5 text-lg font-bold text-slate-800">
-              {search ? "No matching equipment" : "No favorites yet"}
-            </h3>
-
-            <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+          </div>
+        ) : filteredFavorites.length === 0 ? (
+          <div className="rounded-2xl border border-dashed bg-white px-6 py-16 text-center">
+            <Heart size={45} className="mx-auto text-gray-300" />
+            <h2 className="mt-4 text-xl font-bold text-gray-900">
+              {search ? "No matching equipment" : "No Favorites Yet"}
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
               {search
                 ? "Try another search term."
-                : "Save equipment you like and find it here whenever you need it."}
+                : "You have not saved any equipment yet. Explore the marketplace and save equipment you like."}
             </p>
-
             {!search && (
               <Link
                 href="/equipment"
-                className="mt-6 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                Explore Equipment
+                Explore Equipment <ArrowRight size={17} />
               </Link>
             )}
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {filteredFavorites.map((favorite) => {
               const equipment = favorite.equipment;
 
               if (!equipment) return null;
 
+              const equipmentId = equipment._id || favorite.equipmentId || "";
+              const imageUrl = equipment.images?.[0];
+
               return (
-                <article
-                  key={favorite._id}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                <div
+                  key={favorite._id || equipmentId}
+                  className="overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
                 >
-                  <div className="relative h-52 overflow-hidden bg-slate-100">
-                    {equipment.images?.[0] ? (
-                      <img
-                        src={equipment.images[0]}
+                  <div className="relative h-52 bg-slate-100">
+                    {imageUrl ? (
+                      <Image
+                        src={imageUrl}
                         alt={equipment.title}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 33vw"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-slate-400">
-                        <Package className="h-12 w-12" />
+                      <div className="flex h-full items-center justify-center text-gray-400">
+                        <Package size={42} />
                       </div>
                     )}
 
-                    <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-sm">
-                      {equipment.categoryName || "Equipment"}
-                    </span>
-
                     <button
-                      type="button"
-                      onClick={() => handleRemove(equipment._id)}
-                      disabled={removingId === equipment._id}
-                      title="Remove from favorites"
-                      className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-rose-500 shadow-md transition hover:bg-rose-50 disabled:opacity-50"
+                      onClick={() => void removeFavorite(equipmentId)}
+                      disabled={removingId === equipmentId}
+                      aria-label="Remove favorite"
+                      className="absolute right-3 top-3 rounded-full bg-white p-2.5 text-rose-600 shadow transition hover:bg-rose-50 disabled:opacity-50"
                     >
-                      {removingId === equipment._id ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      {removingId === equipmentId ? (
+                        <RefreshCw size={18} className="animate-spin" />
                       ) : (
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 size={18} />
                       )}
                     </button>
                   </div>
 
                   <div className="p-5">
-                    <h3 className="truncate text-lg font-bold text-slate-800">
+                    {equipment.categoryName && (
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                        {equipment.categoryName}
+                      </p>
+                    )}
+
+                    <h3 className="mt-2 line-clamp-1 text-lg font-bold text-gray-900">
                       {equipment.title}
                     </h3>
 
-                    <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
-                      {equipment.description}
-                    </p>
+                    {equipment.description && (
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500">
+                        {equipment.description}
+                      </p>
+                    )}
 
-                    <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                      <MapPin className="h-4 w-4 text-emerald-600" />
-                      <span className="truncate">
-                        {equipment.location || "Location not specified"}
-                      </span>
-                    </div>
+                    {equipment.location && (
+                      <p className="mt-3 flex items-center gap-1.5 text-sm text-gray-500">
+                        <MapPin size={15} />
+                        {equipment.location}
+                      </p>
+                    )}
 
-                    <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="mt-4 flex items-center justify-between border-t pt-4">
                       <div>
-                        <p className="text-xs text-slate-400">
-                          Rental Price
+                        <p className="text-xs text-gray-500">
+                          {equipment.rentalType || "Rental"} price
                         </p>
-                        <p className="mt-1 text-lg font-extrabold text-emerald-700">
-                          {formatMoney(equipment.price)}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          / {equipment.rentalType || "rental"}
+                        <p className="mt-1 font-bold text-gray-900">
+                          {typeof equipment.price === "number"
+                            ? `৳${equipment.price.toLocaleString()}`
+                            : "Contact for price"}
                         </p>
                       </div>
 
                       <Link
-                        href={`/equipment/${equipment._id}`}
-                        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700"
+                        href={`/equipment/${equipmentId}`}
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                       >
-                        View Details
+                        View <ArrowRight size={16} />
                       </Link>
                     </div>
-
-                    <p className="mt-4 flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      Saved {new Date(favorite.createdAt).toLocaleDateString("en-BD")}
-                    </p>
                   </div>
-                </article>
+                </div>
               );
             })}
           </div>
         )}
 
-        {!loading && !error && totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-between">
-            <p className="text-xs text-slate-500">
-              Page {page} of {totalPages} · {totalFavorites} favorites
-            </p>
+        {!loading && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 pt-4">
+            <button
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page <= 1}
+              className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={17} /> Previous
+            </button>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => {
-                  setLoading(true);
-                  setPage((current) => current - 1);
-                }}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </button>
+            <span className="text-sm text-gray-600">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
 
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => {
-                  setLoading(true);
-                  setPage((current) => current + 1);
-                }}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              onClick={() =>
+                setPage((current) =>
+                  Math.min(pagination.totalPages, current + 1)
+                )
+              }
+              disabled={page >= pagination.totalPages}
+              className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next <ChevronRight size={17} />
+            </button>
           </div>
         )}
       </div>
-
-      <footer className="mt-10 border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-        Copyright {new Date().getFullYear()} EQUIPORA. Rent Smarter. Build Better.
-      </footer>
-    </main>
+    </div>
   );
 }
 
-export default function CustomerFavoritesPage() {
+export default function FavoritesPage() {
   return (
     <ProtectedRoute allowedRoles={["customer"]}>
-      <MyFavoritesContent />
+      <FavoritesContent />
     </ProtectedRoute>
   );
 }

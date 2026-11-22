@@ -372,7 +372,7 @@ function OwnerEquipmentContent() {
                       </span>
 
                       <span className="font-bold text-emerald-700">
-                        ৳{Number(item.price || 0).toLocaleString("en-BD")}
+                        ${Number(item.price || 0).toLocaleString("en-BD")}
                         /{item.rentalType || "daily"}
                       </span>
                     </div>

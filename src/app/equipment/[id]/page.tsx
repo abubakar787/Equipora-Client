@@ -257,7 +257,7 @@ function EquipmentDetailsContent() {
 
                 <div className="mt-2 flex items-end gap-2">
                   <span className="text-4xl font-black text-emerald-600">
-                    ৳{formatPrice(equipment.price)}
+                    ${formatPrice(equipment.price)}
                   </span>
 
                   <span className="pb-1 text-sm text-slate-500">

@@ -472,7 +472,7 @@ export default function EquipmentPage() {
                           Rental price
                         </p>
                         <p className="mt-1 text-xl font-black text-emerald-600">
-                          ৳{formatPrice(item.price)}
+                          ${formatPrice(item.price)}
                           <span className="ml-1 text-xs font-medium text-slate-500">
                             / {item.rentalType}
                           </span>

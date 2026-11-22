@@ -482,7 +482,7 @@ function AddEquipmentContent() {
                   <label className={labelClass}>{label}</label>
                   <div className="relative mt-2">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
-                      ৳
+                      $
                     </span>
                     <input
                       type="number"

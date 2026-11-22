@@ -4,6 +4,9 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+import { useSession } from "@/lib/auth-client";
 import {
   ArrowRight,
   Eye,
@@ -121,6 +124,18 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  const { data: session, isPending } = useSession();
+
+useEffect(() => {
+  if (!isPending && session) {
+    router.replace("/dashboard");
+  }
+}, [session, isPending, router]);
+
+if (isPending || session) {
+  return <div>Loading...</div>;
+}
 
   const handleSocialRegister = async (provider: "google" | "github") => {
     try {

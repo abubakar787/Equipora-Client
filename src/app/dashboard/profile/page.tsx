@@ -283,52 +283,61 @@ function ProfileContent() {
       </div>
 
       {/* PROFILE OVERVIEW */}
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="relative h-36 overflow-hidden bg-gradient-to-r from-[#064E3B] via-emerald-600 to-emerald-400">
-          <div className="absolute -right-10 -top-24 h-64 w-64 rounded-full border border-white/15" />
-          <div className="absolute -right-2 -top-16 h-48 w-48 rounded-full border border-white/15" />
+     
+{/* PROFILE OVERVIEW */}
+<section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+  {/* COVER BANNER */}
+  <div className="relative z-0 h-36 overflow-hidden bg-gradient-to-r from-[#064E3B] via-emerald-600 to-emerald-400">
+    <div className="absolute -right-10 -top-24 h-64 w-64 rounded-full border border-white/15" />
+    <div className="absolute -right-2 -top-16 h-48 w-48 rounded-full border border-white/15" />
 
-          <div className="absolute bottom-5 left-7 text-white/90">
-            <p className="text-xs font-bold uppercase tracking-[0.2em]">
-              EQUIPORA
-            </p>
-            <p className="mt-1 text-sm text-white/75">
-              Your account. Your equipment journey.
-            </p>
-          </div>
-        </div>
+    <div className="absolute bottom-5 left-7 text-white/90">
+      <p className="text-xs font-bold uppercase tracking-[0.2em]">
+        EQUIPORA
+      </p>
+      <p className="mt-1 text-sm text-white/75">
+        Your account. Your equipment journey.
+      </p>
+    </div>
+  </div>
 
-        <div className="px-6 pb-7 sm:px-9">
-          <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-white bg-emerald-50 text-3xl font-extrabold text-emerald-700 shadow-md">
-              {profile.image ? (
-                <img
-                  src={profile.image}
-                  alt={profile.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                initials || <UserRound size={35} />
-              )}
-            </div>
+  {/* PROFILE INFORMATION */}
+  <div className="relative z-10 px-6 pb-7 sm:px-9">
+    <div className="-mt-12 flex flex-col gap-5 sm:flex-row sm:items-end">
 
-            <div className="min-w-0 flex-1 pb-1">
-              <h2 className="text-2xl font-bold text-[#101D2C]">
-                {profile.name}
-              </h2>
+      {/* PROFILE IMAGE */}
+      <div className="relative z-20 flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-emerald-50 text-3xl font-extrabold text-emerald-700 shadow-lg">
+        {profile.image ? (
+          <img
+            src={profile.image}
+            alt={profile.name}
+            className="h-full w-full rounded-xl object-cover"
+          />
+        ) : (
+          initials || <UserRound size={35} />
+        )}
+      </div>
 
-              <p className="mt-1 break-all text-sm text-slate-500">
-                {profile.email}
-              </p>
-            </div>
+      {/* NAME AND EMAIL */}
+      <div className="min-w-0 flex-1 pb-1">
+        <h2 className="text-2xl font-bold text-[#101D2C]">
+          {profile.name}
+        </h2>
 
-            <span className="mb-1 inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold capitalize text-emerald-700">
-              <ShieldCheck size={15} />
-              {profile.role}
-            </span>
-          </div>
-        </div>
-      </section>
+        <p className="mt-1 break-all text-sm text-slate-500">
+          {profile.email}
+        </p>
+      </div>
+
+      {/* ROLE */}
+      <span className="mb-1 inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold capitalize text-emerald-700">
+        <ShieldCheck size={15} />
+        {profile.role}
+      </span>
+    </div>
+  </div>
+</section>
+
 
       {/* PERSONAL INFORMATION */}
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9">

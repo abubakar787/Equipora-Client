@@ -37,11 +37,11 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
 
-      const { error } = await authClient.signIn.email({
-        email: email.trim(),
-        password,
-        callbackURL: "/",
-      });
+    const { error } = await authClient.signIn.email({
+  email: email.trim(),
+  password,
+  callbackURL: "/redirect",
+});
 
       if (error) {
         toast.error(error.message || "Invalid email or password.");
@@ -50,8 +50,7 @@ export default function LoginPage() {
 
       toast.success("Login successful! Welcome to EQUIPORA.");
 
-      router.replace("/");
-      router.refresh();
+      
     } catch (error) {
       console.error("Login error:", error);
 
@@ -67,10 +66,10 @@ export default function LoginPage() {
     try {
       setSocialLoading(provider);
 
-      const { error } = await authClient.signIn.social({
-        provider,
-        callbackURL: "/",
-      });
+     const { error } = await authClient.signIn.social({
+  provider,
+  callbackURL: "/redirect",
+});
 
       if (error) {
         toast.error(error.message || `${provider} login failed.`);

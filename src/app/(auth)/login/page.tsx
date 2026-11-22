@@ -70,7 +70,7 @@ export default function LoginPage() {
 
       const { error } = await authClient.signIn.social({
         provider,
-        
+        callbackURL: "/redirect",
       });
 
       if (error) {

@@ -57,6 +57,7 @@ function getArray<T>(
   if (!response || typeof response !== "object") return [];
 
   const root = response as Record<string, unknown>;
+
   const data =
     root.data && typeof root.data === "object"
       ? (root.data as Record<string, unknown>)
@@ -139,18 +140,25 @@ function OwnerDashboardContent() {
     setError("");
 
     try {
-      const tokenData = await authClient.token();
-      const token = tokenData?.token;
+      // Get authentication token
+      const tokenResponse = await authClient.token();
+
+      // Better Auth returns token inside the data property
+      const token = tokenResponse.data?.token;
 
       if (!token) {
-        throw new Error("Authentication token not found. Please log in again.");
+        throw new Error(
+          "Authentication token not found. Please log in again."
+        );
       }
 
+      // Fetch owner equipment and booking requests
       const [equipmentResponse, bookingResponse] = await Promise.all([
         apiRequest<unknown>("/api/equipment/my-equipment", {
           method: "GET",
           token,
         }),
+
         apiRequest<unknown>("/api/bookings/owner-bookings", {
           method: "GET",
           token,
@@ -167,8 +175,13 @@ function OwnerDashboardContent() {
         ["bookings", "items", "results"]
       );
 
-      setDashboard({ equipment, bookings });
+      setDashboard({
+        equipment,
+        bookings,
+      });
     } catch (err) {
+      console.error("Owner dashboard error:", err);
+
       setError(
         err instanceof Error
           ? err.message
@@ -183,6 +196,7 @@ function OwnerDashboardContent() {
     loadDashboard();
   }, [loadDashboard]);
 
+  // Dashboard statistics
   const totalEquipment = dashboard.equipment.length;
 
   const pendingEquipment = dashboard.equipment.filter(
@@ -206,7 +220,8 @@ function OwnerDashboardContent() {
   );
 
   const totalEarnings = completedPaidBookings.reduce(
-    (total, booking) => total + (Number(booking.totalAmount) || 0),
+    (total, booking) =>
+      total + (Number(booking.totalAmount) || 0),
     0
   );
 
@@ -244,15 +259,18 @@ function OwnerDashboardContent() {
   return (
     <main className="min-h-screen bg-[#F7F9FC] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
+
         {/* Header */}
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-emerald-600">
               Owner Workspace
             </p>
+
             <h1 className="text-3xl font-bold tracking-tight text-[#101D2C] sm:text-4xl">
               Owner Dashboard
             </h1>
+
             <p className="mt-2 text-slate-500">
               Manage your equipment, rental requests and business activity.
             </p>
@@ -288,6 +306,7 @@ function OwnerDashboardContent() {
               <AlertCircle size={20} />
               <span>{error}</span>
             </div>
+
             <button
               onClick={loadDashboard}
               className="text-sm font-bold text-red-700 underline"
@@ -312,6 +331,7 @@ function OwnerDashboardContent() {
                     <p className="text-sm font-medium text-slate-500">
                       {stat.title}
                     </p>
+
                     <h2 className="mt-3 text-2xl font-bold text-[#101D2C]">
                       {loading ? (
                         <Loader2 className="animate-spin text-slate-400" />
@@ -340,6 +360,7 @@ function OwnerDashboardContent() {
             <h2 className="text-xl font-bold text-[#101D2C]">
               Quick Actions
             </h2>
+
             <p className="mt-1 text-sm text-slate-500">
               Manage your rental business from here.
             </p>
@@ -384,10 +405,12 @@ function OwnerDashboardContent() {
                     <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600 transition group-hover:bg-emerald-600 group-hover:text-white">
                       <Icon size={22} />
                     </div>
+
                     <div>
                       <h3 className="font-bold text-[#101D2C]">
                         {action.title}
                       </h3>
+
                       <p className="mt-1 text-xs text-slate-500">
                         {action.description}
                       </p>
@@ -411,6 +434,7 @@ function OwnerDashboardContent() {
               <h2 className="text-lg font-bold text-[#101D2C]">
                 Recent Booking Requests
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
                 Latest rental activity for your equipment.
               </p>
@@ -426,7 +450,10 @@ function OwnerDashboardContent() {
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="animate-spin text-emerald-600" size={28} />
+              <Loader2
+                className="animate-spin text-emerald-600"
+                size={28}
+              />
             </div>
           ) : dashboard.bookings.length === 0 ? (
             <div className="px-5 py-12 text-center">
@@ -434,9 +461,11 @@ function OwnerDashboardContent() {
                 size={35}
                 className="mx-auto mb-3 text-slate-300"
               />
+
               <h3 className="font-semibold text-slate-700">
                 No booking requests yet
               </h3>
+
               <p className="mt-1 text-sm text-slate-400">
                 Customer booking requests will appear here.
               </p>
@@ -459,12 +488,17 @@ function OwnerDashboardContent() {
                       <td className="px-5 py-4 font-semibold text-slate-800">
                         {booking.equipmentTitle || "Equipment"}
                       </td>
+
                       <td className="px-5 py-4 text-slate-500">
-                        {dateFormat(booking.createdAt || booking.startAt)}
+                        {dateFormat(
+                          booking.createdAt || booking.startAt
+                        )}
                       </td>
+
                       <td className="px-5 py-4 font-semibold text-slate-800">
                         {currency(Number(booking.totalAmount) || 0)}
                       </td>
+
                       <td className="px-5 py-4">
                         <StatusBadge status={booking.status} />
                       </td>
@@ -483,6 +517,7 @@ function OwnerDashboardContent() {
               <h2 className="text-lg font-bold text-[#101D2C]">
                 My Equipment
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
                 A quick overview of your equipment listings.
               </p>
@@ -498,7 +533,10 @@ function OwnerDashboardContent() {
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="animate-spin text-emerald-600" size={28} />
+              <Loader2
+                className="animate-spin text-emerald-600"
+                size={28}
+              />
             </div>
           ) : dashboard.equipment.length === 0 ? (
             <div className="px-5 py-12 text-center">
@@ -506,17 +544,21 @@ function OwnerDashboardContent() {
                 size={35}
                 className="mx-auto mb-3 text-slate-300"
               />
+
               <h3 className="font-semibold text-slate-700">
                 No equipment listed
               </h3>
+
               <p className="mt-1 text-sm text-slate-400">
                 Add your first equipment to start your rental business.
               </p>
+
               <Link
                 href="/owner/equipment/new"
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                <Plus size={17} /> Add Equipment
+                <Plus size={17} />
+                Add Equipment
               </Link>
             </div>
           ) : (
@@ -535,6 +577,7 @@ function OwnerDashboardContent() {
                       <h3 className="font-semibold text-[#101D2C]">
                         {item.title || item.name || "Untitled Equipment"}
                       </h3>
+
                       <p className="mt-1 text-xs text-slate-500">
                         {item.rentalType || "Rental"} ·{" "}
                         {currency(Number(item.price) || 0)}
@@ -544,6 +587,7 @@ function OwnerDashboardContent() {
 
                   <div className="sm:text-right">
                     <StatusBadge status={item.status} />
+
                     <p className="mt-2 text-xs text-slate-400">
                       Added {dateFormat(item.createdAt)}
                     </p>

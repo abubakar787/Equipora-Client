@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,6 +23,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import { useAuth } from "@/components/providers/auth-provider";
 import { authClient } from "@/lib/auth-client";
 
@@ -42,15 +44,20 @@ const socialLinks = [
 
 type UserRole = "customer" | "owner" | "admin";
 
+type HeaderUser = {
+  id: string;
+  name?: string;
+  email?: string;
+  image?: string | null;
+  role?: UserRole;
+};
+
 function getDashboardPath(role: string) {
   switch (role.toLowerCase()) {
     case "admin":
       return "/admin/dashboard";
-
     case "owner":
       return "/owner/dashboard";
-
-    case "customer":
     default:
       return "/dashboard";
   }
@@ -64,24 +71,23 @@ export default function SiteHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const user = session.data?.user as
-    | {
-        id: string;
-        name?: string;
-        email?: string;
-        image?: string | null;
-        role?: UserRole;
-      }
-    | undefined;
-
+  const user = session.data?.user as HeaderUser | undefined;
   const isPending = session.isPending;
+
   const role = user?.role?.toLowerCase() || "customer";
   const dashboardPath = getDashboardPath(role);
 
   const displayName = user?.name || "EQUIPORA User";
   const userInitial = displayName.charAt(0).toUpperCase();
 
+  const closeMenus = () => {
+    setMobileOpen(false);
+    setProfileOpen(false);
+  };
+
   const handleLogout = async () => {
+    if (isSigningOut) return;
+
     try {
       setIsSigningOut(true);
 
@@ -92,16 +98,13 @@ export default function SiteHeader() {
         return;
       }
 
-      setProfileOpen(false);
-      setMobileOpen(false);
-
+      closeMenus();
       toast.success("You have signed out successfully.");
 
       router.replace("/");
       router.refresh();
     } catch (error) {
       console.error("Logout error:", error);
-
       toast.error("Something went wrong while signing out.");
     } finally {
       setIsSigningOut(false);
@@ -154,7 +157,7 @@ export default function SiteHeader() {
           {/* Brand Logo */}
           <Link
             href="/"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMenus}
             className="flex shrink-0 items-center gap-2.5"
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#101D2C] text-emerald-400 shadow-md">
@@ -188,7 +191,12 @@ export default function SiteHeader() {
           {/* Desktop Authentication */}
           <div className="hidden items-center gap-3 lg:flex">
             {isPending ? (
-              <LoaderCircle className="h-5 w-5 animate-spin text-emerald-600" />
+              <div
+                className="flex h-10 w-28 items-center justify-center"
+                aria-label="Loading account"
+              >
+                <LoaderCircle className="h-5 w-5 animate-spin text-emerald-600" />
+              </div>
             ) : user ? (
               <>
                 <Link
@@ -206,6 +214,7 @@ export default function SiteHeader() {
                     onClick={() => setProfileOpen((value) => !value)}
                     className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 transition hover:border-emerald-400 hover:bg-slate-50"
                     aria-expanded={profileOpen}
+                    aria-label="Open profile menu"
                   >
                     {user.image ? (
                       <img
@@ -223,7 +232,11 @@ export default function SiteHeader() {
                       {displayName}
                     </span>
 
-                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                    <ChevronDown
+                      className={`h-4 w-4 text-slate-500 transition-transform ${
+                        profileOpen ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
 
                   {profileOpen && (
@@ -245,7 +258,7 @@ export default function SiteHeader() {
                       <div className="p-2">
                         <Link
                           href="/dashboard/profile"
-                          onClick={() => setProfileOpen(false)}
+                          onClick={closeMenus}
                           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
                         >
                           <UserRound className="h-4 w-4" />
@@ -254,7 +267,7 @@ export default function SiteHeader() {
 
                         <Link
                           href={dashboardPath}
-                          onClick={() => setProfileOpen(false)}
+                          onClick={closeMenus}
                           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
                         >
                           <LayoutDashboard className="h-4 w-4" />
@@ -323,7 +336,7 @@ export default function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={closeMenus}
                   className="text-sm font-semibold text-slate-700 transition-colors hover:text-emerald-700"
                 >
                   {item.label}
@@ -367,21 +380,21 @@ export default function SiteHeader() {
 
                     <Link
                       href={dashboardPath}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={closeMenus}
                       className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
                     >
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Link>
 
-                   <Link
-  href="/dashboard/profile"
-  onClick={() => setProfileOpen(false)}
-  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
->
-  <UserRound className="h-4 w-4" />
-  My Profile
-</Link>
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={closeMenus}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700"
+                    >
+                      <UserRound className="h-4 w-4" />
+                      My Profile
+                    </Link>
 
                     <button
                       type="button"
@@ -401,7 +414,7 @@ export default function SiteHeader() {
                   <div className="flex gap-3">
                     <Link
                       href="/login"
-                      onClick={() => setMobileOpen(false)}
+                      onClick={closeMenus}
                       className="flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-[#101D2C]"
                     >
                       Log In
@@ -409,7 +422,7 @@ export default function SiteHeader() {
 
                     <Link
                       href="/register"
-                      onClick={() => setMobileOpen(false)}
+                      onClick={closeMenus}
                       className="flex-1 rounded-xl bg-emerald-600 py-3 text-center text-sm font-bold text-white"
                     >
                       Get Started

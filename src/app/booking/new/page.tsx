@@ -1,9 +1,9 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import ProtectedRoute from "@/components/providers/protected-route";
 import { authClient } from "@/lib/auth-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -33,6 +33,13 @@ const rentalTypes: RentalType[] = [
   "monthly",
 ];
 
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(price);
+}
+
 function getLocalDateTime() {
   const date = new Date();
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
@@ -41,9 +48,11 @@ function getLocalDateTime() {
 
 function BookingPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const equipmentId = searchParams.get("equipmentId") || "";
 
   const [equipment, setEquipment] = useState<Equipment | null>(null);
-  const [equipmentId, setEquipmentId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -52,22 +61,19 @@ function BookingPageContent() {
   const [endAt, setEndAt] = useState("");
   const [rentalType, setRentalType] = useState<RentalType>("daily");
   const [quantity, setQuantity] = useState(1);
+
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Load equipment details
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("equipmentId");
-
-    if (!id) {
-      setError("Equipment ID was not found. Please select equipment first.");
-      setLoading(false);
+    if (!equipmentId) {
       return;
     }
 
-    setEquipmentId(id);
+    let isMounted = true;
 
     const loadEquipment = async () => {
       try {
@@ -76,7 +82,7 @@ function BookingPageContent() {
         }
 
         const response = await fetch(
-          `${API_URL}/api/equipment/${encodeURIComponent(id)}`,
+          `${API_URL}/api/equipment/${encodeURIComponent(equipmentId)}`,
           {
             method: "GET",
             credentials: "include",
@@ -87,7 +93,9 @@ function BookingPageContent() {
         const result = await response.json();
 
         if (!response.ok || result.success === false) {
-          throw new Error(result.message || "Unable to load equipment.");
+          throw new Error(
+            result.message || "Unable to load equipment."
+          );
         }
 
         const item: Equipment =
@@ -96,6 +104,8 @@ function BookingPageContent() {
         if (!item?._id) {
           throw new Error("Equipment information is unavailable.");
         }
+
+        if (!isMounted) return;
 
         setEquipment(item);
 
@@ -113,18 +123,26 @@ function BookingPageContent() {
           );
         }
       } catch (err) {
+        if (!isMounted) return;
+
         setError(
           err instanceof Error
             ? err.message
             : "Something went wrong while loading equipment."
         );
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadEquipment();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [equipmentId]);
 
   const availableRentalTypes = rentalTypes.filter(
     (type) =>
@@ -134,7 +152,10 @@ function BookingPageContent() {
 
   const selectedUnitPrice = equipment?.pricing?.[rentalType];
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  // Submit booking request
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
     setError("");
 
@@ -195,9 +216,9 @@ function BookingPageContent() {
       return;
     }
 
-    setSubmitting(true);
-
     try {
+      setSubmitting(true);
+
       if (!API_URL) {
         throw new Error("API URL is not configured.");
       }
@@ -210,7 +231,9 @@ function BookingPageContent() {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(token
+            ? { Authorization: `Bearer ${token}` }
+            : {}),
         },
         body: JSON.stringify({
           equipmentId,
@@ -228,7 +251,9 @@ function BookingPageContent() {
       const result = await response.json();
 
       if (!response.ok || result.success === false) {
-        throw new Error(result.message || "Booking could not be created.");
+        throw new Error(
+          result.message || "Booking could not be created."
+        );
       }
 
       router.push("/dashboard/bookings?booking=created");
@@ -243,23 +268,51 @@ function BookingPageContent() {
     }
   };
 
-  if (loading) {
+  // Missing equipment ID
+  if (!equipmentId) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-gray-600">Loading equipment details...</p>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Equipment ID not found
+        </h2>
+
+        <p className="mt-3 text-gray-600">
+          Please select equipment before booking.
+        </p>
+
+        <button
+          onClick={() => router.push("/equipment")}
+          className="mt-6 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+        >
+          Browse Equipment
+        </button>
       </div>
     );
   }
 
+  // Loading
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-gray-600">
+          Loading equipment details...
+        </p>
+      </div>
+    );
+  }
+
+  // Equipment not found
   if (!equipment) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-gray-900">
           Unable to start booking
         </h1>
+
         <p className="mt-3 text-red-600">
           {error || "Equipment information could not be loaded."}
         </p>
+
         <button
           onClick={() => router.push("/equipment")}
           className="mt-6 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
@@ -273,20 +326,24 @@ function BookingPageContent() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto max-w-5xl">
+        {/* Page Header */}
         <div className="mb-8">
           <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
             EQUIPORA Booking
           </p>
+
           <h1 className="mt-2 text-3xl font-bold text-gray-900">
             Book Equipment
           </h1>
+
           <p className="mt-2 text-gray-600">
-            Submit your rental request. The equipment owner must approve it
-            before you can proceed to payment.
+            Submit your rental request. The equipment owner must
+            approve it before you can proceed to payment.
           </p>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+          {/* Equipment Information */}
           <section className="h-fit overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             {equipment.images?.[0] ? (
               <img
@@ -321,6 +378,7 @@ function BookingPageContent() {
                 <p className="text-sm text-gray-500">
                   Available quantity
                 </p>
+
                 <p className="mt-1 text-lg font-semibold text-gray-900">
                   {equipment.quantity}
                 </p>
@@ -330,11 +388,10 @@ function BookingPageContent() {
                     <p className="text-sm text-gray-500">
                       Rental rate
                     </p>
+
                     <p className="mt-1 text-2xl font-bold text-blue-700">
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(selectedUnitPrice)}
+                      {formatPrice(selectedUnitPrice)}
+
                       <span className="ml-1 text-sm font-normal text-gray-500">
                         / {rentalType}
                       </span>
@@ -344,18 +401,20 @@ function BookingPageContent() {
               </div>
 
               <p className="mt-5 rounded-lg bg-blue-50 p-3 text-sm leading-6 text-blue-800">
-                The final rental amount will be calculated securely by
-                EQUIPORA when your booking is submitted.
+                The final rental amount will be calculated securely
+                by EQUIPORA when your booking is submitted.
               </p>
             </div>
           </section>
 
+          {/* Booking Form */}
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="mb-6 text-xl font-bold text-gray-900">
               Booking Information
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Dates */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
@@ -364,6 +423,7 @@ function BookingPageContent() {
                   >
                     Start Date & Time *
                   </label>
+
                   <input
                     id="startAt"
                     type="datetime-local"
@@ -382,6 +442,7 @@ function BookingPageContent() {
                   >
                     End Date & Time *
                   </label>
+
                   <input
                     id="endAt"
                     type="datetime-local"
@@ -394,6 +455,7 @@ function BookingPageContent() {
                 </div>
               </div>
 
+              {/* Rental Type and Quantity */}
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
@@ -402,6 +464,7 @@ function BookingPageContent() {
                   >
                     Rental Type *
                   </label>
+
                   <select
                     id="rentalType"
                     required
@@ -418,6 +481,7 @@ function BookingPageContent() {
                       </option>
                     ))}
                   </select>
+
                   {availableRentalTypes.length === 0 && (
                     <p className="mt-1 text-xs text-red-600">
                       No rental pricing is configured for this equipment.
@@ -432,6 +496,7 @@ function BookingPageContent() {
                   >
                     Quantity *
                   </label>
+
                   <input
                     id="quantity"
                     type="number"
@@ -447,6 +512,7 @@ function BookingPageContent() {
                 </div>
               </div>
 
+              {/* Contact Name */}
               <div>
                 <label
                   htmlFor="contactName"
@@ -454,6 +520,7 @@ function BookingPageContent() {
                 >
                   Contact Name *
                 </label>
+
                 <input
                   id="contactName"
                   type="text"
@@ -467,6 +534,7 @@ function BookingPageContent() {
                 />
               </div>
 
+              {/* Phone */}
               <div>
                 <label
                   htmlFor="contactPhone"
@@ -474,6 +542,7 @@ function BookingPageContent() {
                 >
                   Contact Phone *
                 </label>
+
                 <input
                   id="contactPhone"
                   type="tel"
@@ -487,6 +556,7 @@ function BookingPageContent() {
                 />
               </div>
 
+              {/* Delivery Address */}
               <div>
                 <label
                   htmlFor="deliveryAddress"
@@ -494,6 +564,7 @@ function BookingPageContent() {
                 >
                   Delivery Address *
                 </label>
+
                 <textarea
                   id="deliveryAddress"
                   required
@@ -507,6 +578,7 @@ function BookingPageContent() {
                 />
               </div>
 
+              {/* Notes */}
               <div>
                 <label
                   htmlFor="notes"
@@ -514,6 +586,7 @@ function BookingPageContent() {
                 >
                   Additional Notes
                 </label>
+
                 <textarea
                   id="notes"
                   maxLength={1000}
@@ -525,6 +598,7 @@ function BookingPageContent() {
                 />
               </div>
 
+              {/* Error */}
               {error && (
                 <div
                   role="alert"
@@ -534,6 +608,7 @@ function BookingPageContent() {
                 </div>
               )}
 
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={
@@ -542,12 +617,14 @@ function BookingPageContent() {
                 }
                 className="w-full rounded-lg bg-blue-600 px-5 py-3.5 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitting ? "Submitting Booking..." : "Submit Booking Request"}
+                {submitting
+                  ? "Submitting Booking..."
+                  : "Submit Booking Request"}
               </button>
 
               <p className="text-center text-xs leading-5 text-gray-500">
-                No payment is collected at this stage. You can pay after
-                the equipment owner approves your booking.
+                No payment is collected at this stage. You can pay
+                after the equipment owner approves your booking.
               </p>
             </form>
           </section>
@@ -560,7 +637,15 @@ function BookingPageContent() {
 export default function NewBookingPage() {
   return (
     <ProtectedRoute allowedRoles={["customer"]}>
-      <BookingPageContent />
+      <Suspense
+        fallback={
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <p className="text-gray-600">Loading booking page...</p>
+          </div>
+        }
+      >
+        <BookingPageContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

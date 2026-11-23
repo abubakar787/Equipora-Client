@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  CreditCard,
   Package,
   RefreshCw,
   Search,
@@ -66,6 +67,11 @@ interface ApiResponse<T> {
   data: T;
 }
 
+interface CheckoutResult {
+  checkoutUrl: string;
+  sessionId: string;
+}
+
 const filters = [
   { label: "All Bookings", value: "" },
   { label: "Pending Payment", value: "pending_payment" },
@@ -120,7 +126,6 @@ function formatMoney(amount?: number) {
   }).format(amount || 0);
 }
 
-// FIXED: Explicitly normalize both possible API response shapes.
 function extractBookingResult(
   response: ApiResponse<BookingResult> | BookingResult
 ): BookingResult {
@@ -158,7 +163,37 @@ function MyBookingsContent() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const [paymentNotice, setPaymentNotice] = useState<
+    "success" | "cancelled" | null
+  >(null);
+
+  // Read Stripe return parameters without useSearchParams.
+  // This avoids introducing a new Suspense requirement for this page.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const payment = url.searchParams.get("payment");
+
+    if (payment === "success") {
+      setPaymentNotice("success");
+    } else if (payment === "cancelled") {
+      setPaymentNotice("cancelled");
+    }
+
+    if (payment) {
+      url.searchParams.delete("payment");
+      url.searchParams.delete("session_id");
+
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      );
+    }
+  }, []);
 
   const getToken = async () => {
     const { data, error } = await authClient.token();
@@ -241,6 +276,54 @@ function MyBookingsContent() {
     setPage(newPage);
   };
 
+  // Create Stripe Checkout Session and redirect the customer.
+  const handlePayment = async (booking: Booking) => {
+    if (payingId) return;
+
+    if (
+      booking.status !== "approved_for_payment" ||
+      booking.paymentStatus?.toLowerCase() !== "unpaid"
+    ) {
+      toast.error("This booking is not eligible for payment.");
+      return;
+    }
+
+    try {
+      setPayingId(booking._id);
+
+      const token = await getToken();
+
+      const response = await apiRequest<ApiResponse<CheckoutResult>>(
+        `/api/payments/checkout/${booking._id}`,
+        {
+          method: "POST",
+          token,
+        }
+      );
+
+      const checkoutUrl = response?.data?.checkoutUrl;
+
+      if (!response?.success || !checkoutUrl) {
+        throw new Error(
+          response?.message || "Unable to start Stripe Checkout."
+        );
+      }
+
+      // Stripe Checkout is hosted externally.
+      window.location.assign(checkoutUrl);
+    } catch (err) {
+      console.error("Stripe checkout error:", err);
+
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Unable to start payment. Please try again."
+      );
+
+      setPayingId(null);
+    }
+  };
+
   const handleCancel = async (booking: Booking) => {
     const paymentStatus = booking.paymentStatus?.toLowerCase();
 
@@ -320,6 +403,43 @@ function MyBookingsContent() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 py-8 md:px-8">
+        {/* Stripe return notice */}
+        {paymentNotice === "success" && (
+          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <p className="font-bold text-blue-800">
+              Checkout completed — verifying payment
+            </p>
+            <p className="mt-1 text-sm leading-6 text-blue-700">
+              Stripe has returned you to EQUIPORA. Your booking will show as
+              Paid after our server verifies the payment through Stripe
+              webhook. Please refresh this page to check the latest status.
+            </p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+              />
+              Check Payment Status
+            </button>
+          </div>
+        )}
+
+        {paymentNotice === "cancelled" && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <p className="font-bold text-amber-800">
+              Payment was cancelled
+            </p>
+            <p className="mt-1 text-sm leading-6 text-amber-700">
+              No successful payment was confirmed. If your booking is still
+              approved and unpaid, you can try again using Pay Now.
+            </p>
+          </div>
+        )}
+
         <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -442,6 +562,10 @@ function MyBookingsContent() {
                 const status = booking.status;
                 const paymentStatus = booking.paymentStatus?.toLowerCase();
 
+                const canPay =
+                  status === "approved_for_payment" &&
+                  paymentStatus === "unpaid";
+
                 const canCancel =
                   paymentStatus !== "paid" &&
                   ![
@@ -522,10 +646,31 @@ function MyBookingsContent() {
                             {statusLabels[status] || status}
                           </span>
 
+                          {canPay && (
+                            <button
+                              type="button"
+                              disabled={payingId !== null}
+                              onClick={() => handlePayment(booking)}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {payingId === booking._id ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <CreditCard className="h-4 w-4" />
+                              )}
+                              {payingId === booking._id
+                                ? "Connecting to Stripe..."
+                                : "Pay Now"}
+                            </button>
+                          )}
+
                           {canCancel && (
                             <button
                               type="button"
-                              disabled={cancellingId === booking._id}
+                              disabled={
+                                cancellingId === booking._id ||
+                                payingId === booking._id
+                              }
                               onClick={() => handleCancel(booking)}
                               className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 transition hover:text-red-800 disabled:opacity-50"
                             >

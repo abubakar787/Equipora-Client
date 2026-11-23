@@ -3,10 +3,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/providers/protected-route";
 import {
   ArrowLeft,
+  ArrowRight,
   MapPin,
   Package,
   ShieldCheck,
@@ -16,6 +18,11 @@ import {
   Wrench,
   AlertCircle,
   RefreshCw,
+  X,
+  ZoomIn,
+  ChevronLeft,
+  ChevronRight,
+  Images,
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -65,6 +72,17 @@ function EquipmentDetailsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Gallery states
+  const [activeImage, setActiveImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Hover zoom states
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({
+    x: 50,
+    y: 50,
+  });
+
   const fetchEquipmentDetails = useCallback(async () => {
     if (!API_URL || !equipmentId) {
       setError("Equipment information is unavailable.");
@@ -101,6 +119,7 @@ function EquipmentDetailsContent() {
       }
 
       setEquipment(result.data);
+      setActiveImage(0);
     } catch (error) {
       console.error("Equipment details error:", error);
 
@@ -118,8 +137,41 @@ function EquipmentDetailsContent() {
     void fetchEquipmentDetails();
   }, [fetchEquipmentDetails]);
 
+  // Lightbox keyboard navigation
+  useEffect(() => {
+    if (!lightboxOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLightboxOpen(false);
+      }
+
+      if (event.key === "ArrowRight") {
+        setActiveImage((current) =>
+          current < (equipment?.images?.length || 1) - 1
+            ? current + 1
+            : 0
+        );
+      }
+
+      if (event.key === "ArrowLeft") {
+        setActiveImage((current) =>
+          current > 0
+            ? current - 1
+            : (equipment?.images?.length || 1) - 1
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [lightboxOpen, equipment?.images?.length]);
+
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-BD").format(price);
+    new Intl.NumberFormat("en-US").format(price);
 
   const rentalPeriod = equipment?.rentalType || "daily";
 
@@ -131,6 +183,31 @@ function EquipmentDetailsContent() {
   const ownerEmail =
     equipment?.owner?.email ||
     equipment?.ownerEmail;
+
+  const images = equipment?.images?.filter(Boolean) || [];
+
+  const handleMouseMove = (
+    event: ReactMouseEvent<HTMLDivElement>
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    setZoomPosition({ x, y });
+  };
+
+  const showPreviousImage = () => {
+    setActiveImage((current) =>
+      current > 0 ? current - 1 : images.length - 1
+    );
+  };
+
+  const showNextImage = () => {
+    setActiveImage((current) =>
+      current < images.length - 1 ? current + 1 : 0
+    );
+  };
 
   if (loading) {
     return (
@@ -191,44 +268,116 @@ function EquipmentDetailsContent() {
 
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10">
         <div className="grid gap-10 lg:grid-cols-5">
-          {/* Equipment image */}
+          {/* Equipment Gallery */}
           <div className="lg:col-span-3">
-            <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm sm:min-h-[480px]">
-              {equipment.images?.[0] ? (
-                <img
-                  src={equipment.images[0]}
-                  alt={equipment.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
+            {/* Main Image */}
+            <div
+              className="group relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-3xl bg-white shadow-sm sm:min-h-[480px]"
+              onMouseEnter={() => setIsZooming(true)}
+              onMouseLeave={() => setIsZooming(false)}
+              onMouseMove={handleMouseMove}
+            >
+              {images.length > 0 ? (
+                <div
+                  className="absolute inset-0 cursor-zoom-in overflow-hidden"
+                  onClick={() => setLightboxOpen(true)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Open image gallery"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      setLightboxOpen(true);
+                    }
+                  }}
+                >
+                  <img
+                    src={images[activeImage]}
+                    alt={`${equipment.title} - Image ${activeImage + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-200 ease-out"
+                    style={{
+                      transform: isZooming
+                        ? "scale(2)"
+                        : "scale(1)",
+                      transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
+                    }}
+                  />
+                </div>
               ) : (
                 <Package className="h-20 w-20 text-slate-300" />
               )}
 
-              <span className="absolute left-5 top-5 rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-lg">
+              {/* Availability Badge */}
+              <span className="absolute left-5 top-5 z-10 rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-lg">
                 Available for Rent
               </span>
+
+              {/* Image Count */}
+              {images.length > 0 && (
+                <span className="absolute bottom-5 left-5 z-10 flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm">
+                  <Images size={15} />
+                  {activeImage + 1} / {images.length}
+                </span>
+              )}
+
+              {/* Zoom Hint */}
+              {images.length > 0 && (
+                <span className="pointer-events-none absolute bottom-5 right-5 z-10 flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-xs font-semibold text-white opacity-100 backdrop-blur-sm transition group-hover:opacity-0">
+                  <ZoomIn size={15} />
+                  Hover to zoom
+                </span>
+              )}
             </div>
 
-            {/* Additional images */}
-            {equipment.images?.length > 1 && (
-              <div className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-4">
-                {equipment.images.slice(1, 5).map((image, index) => (
-                  <div
-                    key={`${image}-${index}`}
-                    className="relative h-24 overflow-hidden rounded-2xl bg-white"
-                  >
-                    <img
-                      src={image}
-                      alt={`${equipment.title} image ${index + 2}`}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                ))}
+            {/* Thumbnail Gallery */}
+            {images.length > 1 && (
+              <div className="mt-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-[#101D2C]">
+                    Product Gallery
+                  </h3>
+
+                  <span className="text-xs text-slate-400">
+                    {images.length} Photos
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  {images.map((image, index) => (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      onClick={() => setActiveImage(index)}
+                      className={`relative h-20 w-24 overflow-hidden rounded-xl border-2 transition sm:h-24 sm:w-28 ${
+                        activeImage === index
+                          ? "border-emerald-600 ring-2 ring-emerald-100"
+                          : "border-transparent opacity-70 hover:border-slate-300 hover:opacity-100"
+                      }`}
+                      aria-label={`View image ${index + 1}`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${equipment.title} thumbnail ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Equipment Information */}
+            <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:hidden">
+              <h2 className="text-xl font-black text-[#101D2C]">
+                Equipment Description
+              </h2>
+
+              <p className="mt-4 whitespace-pre-line text-sm leading-8 text-slate-600">
+                {equipment.description}
+              </p>
+            </div>
           </div>
 
-          {/* Equipment information */}
+          {/* Equipment Information */}
           <div className="lg:col-span-2">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
               <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -333,7 +482,7 @@ function EquipmentDetailsContent() {
         </div>
 
         {/* Description */}
-        <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mt-10 hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:block">
           <h2 className="text-2xl font-black text-[#101D2C]">
             Equipment Description
           </h2>
@@ -343,6 +492,74 @@ function EquipmentDetailsContent() {
           </p>
         </div>
       </section>
+
+      {/* Full Screen Image Lightbox */}
+      {lightboxOpen && images.length > 0 && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Close Button */}
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            className="absolute right-5 top-5 z-[110] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Close gallery"
+          >
+            <X size={25} />
+          </button>
+
+          {/* Image Counter */}
+          <div className="absolute left-5 top-6 z-[110] rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+            {activeImage + 1} / {images.length}
+          </div>
+
+          {/* Previous Button */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showPreviousImage();
+              }}
+              className="absolute left-3 top-1/2 z-[110] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25 sm:left-8 sm:h-14 sm:w-14"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={30} />
+            </button>
+          )}
+
+          {/* Lightbox Image */}
+          <img
+            src={images[activeImage]}
+            alt={`${equipment.title} - Image ${activeImage + 1}`}
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+          />
+
+          {/* Next Button */}
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showNextImage();
+              }}
+              className="absolute right-3 top-1/2 z-[110] flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/25 sm:right-8 sm:h-14 sm:w-14"
+              aria-label="Next image"
+            >
+              <ChevronRight size={30} />
+            </button>
+          )}
+
+          {/* Bottom Navigation */}
+          <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-3 text-xs font-medium text-white/60">
+            <span>Use ← → to navigate</span>
+            <span>•</span>
+            <span>ESC to close</span>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

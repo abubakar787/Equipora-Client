@@ -152,18 +152,25 @@ function OwnerDashboardContent() {
         );
       }
 
-      // Fetch owner equipment and booking requests
-      const [equipmentResponse, bookingResponse] = await Promise.all([
-        apiRequest<unknown>("/api/equipment/my-equipment", {
-          method: "GET",
-          token,
-        }),
+      const equipmentResponse = await apiRequest<unknown>(
+  "/api/equipment/my-equipment",
+  {
+    method: "GET",
+    token,
+  }
+);
 
-        apiRequest<unknown>("/api/bookings/owner-bookings", {
-          method: "GET",
-          token,
-        }),
-      ]);
+console.log("OWNER EQUIPMENT RESPONSE:", equipmentResponse);
+
+const bookingResponse = await apiRequest<unknown>(
+  "/api/bookings/owner-bookings",
+  {
+    method: "GET",
+    token,
+  }
+);
+
+console.log("OWNER BOOKINGS RESPONSE:", bookingResponse);
 
       const equipment = getArray<Equipment>(
         equipmentResponse,
